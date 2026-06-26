@@ -1,0 +1,63 @@
+@use "../../styles/breakpoints" as *;
+
+// Styles owned by Reports.
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-card {
+  display: grid;
+  min-height: 150px;
+  grid-template-columns: 46px 1fr;
+  align-items: start;
+  column-gap: 13px;
+}
+
+.report-card > span {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  color: var(--gold-dark);
+  border-radius: 13px;
+  background: var(--gold-soft);
+}
+
+.report-card h2 {
+  margin: 3px 0 7px;
+  font-size: 13px;
+}
+
+.report-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.report-card button {
+  grid-column: 2;
+  width: fit-content;
+  margin-top: 16px;
+  color: var(--gold-dark);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+@include respond-to-desktop-lg {
+  .report-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@include respond-to-tablet {
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+}

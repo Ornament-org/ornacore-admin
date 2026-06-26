@@ -1,0 +1,50 @@
+@use "../../../styles/breakpoints" as *;
+
+// Styles owned by ShopkeepersPage
+
+.shopkeepers-page {
+  min-height: calc(100vh - 150px); // Subtract topbar height
+  display: flex;
+  flex-direction: column;
+}
+
+.shopkeepers-page__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; // Important for nested flex scrolling
+}
+
+.shopkeepers-page__table-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.shopkeepers-page__table {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.list-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@include respond-to-mobile {
+  .shopkeepers-page {
+    min-height: calc(100vh - 60px); // Adjust for mobile topbar
+  }
+}
+
+@include respond-to-tablet {
+  .shopkeepers-page {
+    min-height: calc(100vh - 66px);
+  }
+}

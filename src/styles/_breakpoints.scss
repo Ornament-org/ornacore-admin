@@ -1,0 +1,74 @@
+// Centered Responsive Breakpoints
+$bp-mobile: 560px;
+$bp-tablet: 780px;
+$bp-desktop-sm: 1024px;
+$bp-desktop-lg: 1280px;
+
+// Media Query Mixins
+@mixin respond-to-mobile {
+  @media (max-width: #{$bp-mobile}) {
+    @content;
+  }
+}
+
+@mixin respond-to-tablet {
+  @media (max-width: #{$bp-tablet}) {
+    @content;
+  }
+}
+
+@mixin respond-to-desktop-sm {
+  @media (max-width: #{$bp-desktop-sm}) {
+    @content;
+  }
+}
+
+@mixin respond-to-desktop-lg {
+  @media (max-width: #{$bp-desktop-lg}) {
+    @content;
+  }
+}
+
+// Range-based mixins for more precise control
+@mixin respond-to-mobile-only {
+  @media (max-width: #{$bp-mobile}) {
+    @content;
+  }
+}
+
+@mixin respond-to-tablet-only {
+  @media (min-width: #{$bp-mobile + 1}) and (max-width: #{$bp-tablet}) {
+    @content;
+  }
+}
+
+@mixin respond-to-desktop-sm-only {
+  @media (min-width: #{$bp-tablet + 1}) and (max-width: #{$bp-desktop-sm}) {
+    @content;
+  }
+}
+
+@mixin respond-to-desktop-lg-only {
+  @media (min-width: #{$bp-desktop-sm + 1}) {
+    @content;
+  }
+}
+
+// Minimum-width mixins for mobile-first approach
+@mixin respond-above-mobile {
+  @media (min-width: #{$bp-mobile + 1}) {
+    @content;
+  }
+}
+
+@mixin respond-above-tablet {
+  @media (min-width: #{$bp-tablet + 1}) {
+    @content;
+  }
+}
+
+@mixin respond-above-desktop-sm {
+  @media (min-width: #{$bp-desktop-sm + 1}) {
+    @content;
+  }
+}

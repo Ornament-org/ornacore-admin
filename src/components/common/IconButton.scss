@@ -1,0 +1,43 @@
+// Shared icon-button primitive used by layout, modal, and table components.
+
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  color: #696963;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  transition: 160ms ease;
+
+  &:hover {
+    color: var(--ink);
+    border-color: var(--line);
+    background: var(--surface-soft);
+  }
+
+  &--subtle {
+    width: 30px;
+    height: 30px;
+    border-color: var(--line);
+  }
+
+  &--notification > span {
+    position: absolute;
+    top: 1px;
+    right: 0;
+    display: grid;
+    min-width: 16px;
+    height: 16px;
+    place-items: center;
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #e75245;
+    font-size: 8px;
+    font-weight: 800;
+  }
+}

@@ -1,0 +1,99 @@
+// Reusable active/inactive status switch.
+
+.status-toggle {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  color: #b13b34;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.72;
+  }
+
+  &.is-active {
+    color: #18854d;
+  }
+}
+
+.status-toggle__track {
+  position: relative;
+  width: 42px;
+  height: 23px;
+  flex: 0 0 42px;
+  border: 1px solid #e4a7a2;
+  border-radius: 999px;
+  background: #f8d9d6;
+  box-shadow: inset 0 1px 2px rgb(74 23 19 / 9%);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.status-toggle__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #d84d44;
+  box-shadow: 0 2px 5px rgb(96 29 24 / 25%);
+  transition:
+    left 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.status-toggle.is-active {
+  .status-toggle__track {
+    border-color: #7bc49d;
+    background: #ccebd9;
+  }
+
+  .status-toggle__thumb {
+    left: 22px;
+    background: #1f9a5b;
+  }
+}
+
+.status-toggle.is-pending .status-toggle__thumb {
+  transform: scale(0.78);
+}
+
+.status-toggle strong {
+  min-width: 43px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.status-toggle--compact {
+  gap: 6px;
+
+  .status-toggle__track {
+    width: 36px;
+    height: 20px;
+    flex-basis: 36px;
+  }
+
+  .status-toggle__thumb {
+    top: 3px;
+    width: 12px;
+    height: 12px;
+  }
+
+  &.is-active .status-toggle__thumb {
+    left: 19px;
+  }
+
+  strong {
+    min-width: 39px;
+    font-size: 8px;
+  }
+}

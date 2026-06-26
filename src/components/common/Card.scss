@@ -1,0 +1,64 @@
+@use "../../styles/breakpoints" as *;
+
+// Styles owned by Card.
+
+.surface-card {
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.surface-card--padded {
+  padding: 19px;
+}
+
+.list-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-heading {
+  display: flex;
+  min-height: 40px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-heading h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: -0.015em;
+}
+
+.card-heading p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+@include respond-to-mobile {
+  .surface-card--padded {
+    padding: 14px;
+  }
+
+  .card-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .card-heading h2 {
+    font-size: 15px;
+  }
+
+  .card-heading p {
+    font-size: 10px;
+  }
+}
+
+@include respond-to-tablet {
+  .surface-card--padded {
+    padding: 16px;
+  }
+}

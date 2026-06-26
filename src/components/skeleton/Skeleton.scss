@@ -1,0 +1,150 @@
+/* ══════════════════════════════════════════════════════════════
+   Skeleton Shimmer — Shared styles for all skeleton components
+   ══════════════════════════════════════════════════════════════ */
+
+@keyframes sk-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+/* Base shimmer block */
+.skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    #f0ebe2 0%,
+    #fdf8f0 40%,
+    #f0ebe2 80%
+  );
+  background-size: 1200px 100%;
+  animation: sk-shimmer 1.5s infinite linear;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Layout wrappers ──────────────────────────────────────── */
+
+.sk-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sk-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.sk-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.sk-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.sk-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── Card shell ───────────────────────────────────────────── */
+
+.sk-card {
+  background: #fff;
+  border: 1.5px solid #ece7de;
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.sk-card--flush {
+  padding: 0;
+}
+
+.sk-card__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f5f0e8;
+  margin-bottom: 16px;
+}
+
+.sk-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── Table body ───────────────────────────────────────────── */
+
+.sk-table-body {
+  padding: 0;
+}
+
+.sk-table-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f9f5ef;
+
+  &:last-child { border-bottom: 0; }
+}
+
+/* ── Activity list ────────────────────────────────────────── */
+
+.sk-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f9f5ef;
+
+  &:last-child { border-bottom: 0; }
+}
+
+/* ── Shop list items ──────────────────────────────────────── */
+
+.sk-shop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f9f5ef;
+
+  &:last-child { border-bottom: 0; }
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+@media (max-width: 1200px) {
+  .sk-grid-4 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 1000px) {
+  .sk-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  .sk-grid-3,
+  .sk-grid-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .sk-grid-4 { grid-template-columns: 1fr; }
+}

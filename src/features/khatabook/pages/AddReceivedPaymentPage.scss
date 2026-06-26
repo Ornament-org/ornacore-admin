@@ -1,0 +1,460 @@
+.payment-page {
+  display: grid;
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.payment-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.payment-page__header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.payment-page__header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.payment-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.payment-page-loading {
+  padding: 60px;
+  text-align: center;
+  color: var(--muted);
+}
+
+// Payment Header Card
+.payment-header {
+  padding: 18px;
+}
+
+.payment-header__info h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.payment-header__details {
+  display: flex;
+  gap: 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+// Current Position Card
+.current-position {
+  padding: 18px;
+}
+
+.current-position h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.current-position__metal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  background: var(--surface);
+}
+
+.current-position__metal span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.current-position__metrics {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 14px;
+}
+
+.current-position__metrics span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.current-position__metrics strong {
+  text-align: right;
+  font-size: 15px;
+}
+
+.current-position__metrics .is-red {
+  color: #d92d20;
+}
+
+.current-position__metrics .is-green {
+  color: #067647;
+}
+
+// Collection Type Selector
+.collection-type-selector {
+  padding: 18px;
+}
+
+.collection-type-selector h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.collection-type-selector__options {
+  display: grid;
+  gap: 12px;
+}
+
+.collection-type-selector__options label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.collection-type-selector__options label:hover {
+  border-color: var(--gold);
+}
+
+.collection-type-selector__options label.is-selected {
+  border-color: var(--gold);
+  background: rgba(198, 136, 31, 0.08);
+}
+
+.collection-type-selector__options input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--gold);
+}
+
+.collection-type-selector__options div {
+  display: grid;
+  gap: 4px;
+}
+
+.collection-type-selector__options strong {
+  font-size: 15px;
+}
+
+.collection-type-selector__options small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+// Gold Collection Form
+.gold-collection-form {
+  padding: 18px;
+}
+
+.gold-collection-form h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.gold-collection-form label {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.gold-collection-form label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gold-collection-form input,
+.gold-collection-form textarea {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.gold-collection-form input {
+  height: 42px;
+}
+
+.gold-collection-form textarea {
+  min-height: 76px;
+  padding-top: 11px;
+  resize: vertical;
+}
+
+.gold-collection-form small {
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.gold-collection-form__preview {
+  padding: 12px;
+  border: 1px solid rgba(6, 118, 71, 0.24);
+  border-radius: 8px;
+  background: rgba(6, 118, 71, 0.08);
+  color: #067647;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+// Cash Collection Form
+.cash-collection-form {
+  padding: 18px;
+}
+
+.cash-collection-form h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.cash-collection-form label {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.cash-collection-form label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cash-collection-form input,
+.cash-collection-form textarea {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.cash-collection-form input {
+  height: 42px;
+}
+
+.cash-collection-form textarea {
+  min-height: 76px;
+  padding-top: 11px;
+  resize: vertical;
+}
+
+.cash-collection-form small {
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cash-collection-form__preview {
+  padding: 12px;
+  border: 1px solid rgba(198, 136, 31, 0.24);
+  border-radius: 8px;
+  background: rgba(198, 136, 31, 0.08);
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+// Settlement Preview Card
+.settlement-preview {
+  padding: 18px;
+}
+
+.settlement-preview h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.settlement-preview__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  margin-bottom: 14px;
+}
+
+.settlement-preview__total span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.settlement-preview__total strong {
+  font-size: 18px;
+}
+
+.settlement-preview__total .is-green {
+  color: #067647;
+}
+
+.settlement-preview__description {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settlement-preview__orders {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.settlement-preview__order {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.settlement-preview__order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settlement-preview__order-header strong {
+  font-size: 15px;
+}
+
+.settlement-preview__order-header span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settlement-preview__order-details {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 14px;
+}
+
+.settlement-preview__order-details span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settlement-preview__order-details strong {
+  text-align: right;
+  font-size: 14px;
+}
+
+.settlement-preview__order-details .is-green {
+  color: #067647;
+}
+
+.settlement-preview__order-details .is-orange {
+  color: #ea580c;
+}
+
+.settlement-preview__after {
+  padding: 14px;
+  border: 1px solid rgba(217, 45, 32, 0.24);
+  border-radius: 8px;
+  background: rgba(217, 45, 32, 0.08);
+  margin-bottom: 14px;
+}
+
+.settlement-preview__after span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.settlement-preview__after div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settlement-preview__after strong {
+  font-size: 18px;
+  color: #d92d20;
+}
+
+.settlement-preview__info {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(6, 118, 71, 0.18);
+  border-radius: 8px;
+  background: rgba(6, 118, 71, 0.08);
+  color: #067647;
+  font-size: 13px;
+}
+
+// Payment Actions
+.payment-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.payment-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.payment-actions button:last-child {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #fff;
+}
+
+.payment-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+// Responsive
+@media (max-width: 760px) {
+  .payment-page__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .payment-page__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-actions {
+    flex-direction: column;
+  }
+
+  .payment-actions button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,112 @@
+@use "../../styles/breakpoints" as *;
+
+// Styles owned by FormField.
+
+.form-field {
+  display: grid;
+  gap: 7px;
+}
+
+.form-field__label {
+  color: #52524d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.form-field__control {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 0 13px;
+  background: #fff;
+  transition: 160ms ease;
+}
+
+.form-field__control:focus-within {
+  border-color: rgba(195, 134, 39, 0.7);
+  box-shadow: 0 0 0 3px rgba(195, 134, 39, 0.1);
+}
+
+.form-field__control--error {
+  border-color: rgba(223, 89, 79, 0.65);
+}
+
+.form-field__icon {
+  color: #aaa69e;
+  flex: 0 0 auto;
+}
+
+.form-field__control input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+
+.form-field__control input::placeholder {
+  color: #bbb8b1;
+}
+
+.form-field__error {
+  color: var(--red);
+  font-size: 10px;
+}
+
+.form-field__hint {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.field-action {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  color: #929089;
+  border: 0;
+  background: transparent;
+}
+
+@include respond-to-mobile {
+  .form-field {
+    gap: 6px;
+  }
+
+  .form-field__label {
+    font-size: 10px;
+  }
+
+  .form-field__control {
+    min-height: 44px;
+    gap: 8px;
+    padding: 0 11px;
+  }
+
+  .form-field__control input {
+    font-size: 14px;
+  }
+
+  .form-field__control input::placeholder {
+    font-size: 13px;
+  }
+
+  .form-field__error,
+  .form-field__hint {
+    font-size: 9px;
+  }
+
+  .field-action {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@include respond-to-tablet {
+  .form-field__control {
+    min-height: 44px;
+  }
+}

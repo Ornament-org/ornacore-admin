@@ -1,0 +1,65 @@
+@use "../../styles/breakpoints" as *;
+
+// Styles owned by Badge.
+
+.badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  white-space: nowrap;
+}
+
+.badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge--success {
+  color: #217a4b;
+  background: #e5f5ec;
+}
+
+.badge--warning {
+  color: #9a6218;
+  background: #fff0d7;
+}
+
+.badge--danger {
+  color: #c3443b;
+  background: #fee9e7;
+}
+
+.badge--info {
+  color: #2867bb;
+  background: #e7f0fd;
+}
+
+.badge--purple {
+  color: #6843c2;
+  background: #eee8ff;
+}
+
+.badge--neutral {
+  color: #66665f;
+  background: #f0efec;
+}
+
+@include respond-to-tablet {
+  .backend-banner .badge {
+    grid-column: 2;
+  }
+}
+
+@include respond-to-mobile {
+  .recent-order .badge {
+    display: none;
+  }
+}

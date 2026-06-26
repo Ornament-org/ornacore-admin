@@ -1,0 +1,123 @@
+@use "../../styles/breakpoints" as *;
+
+// Styles owned by Settings.
+
+.settings-form-grid input,
+.settings-form-grid select {
+  width: 100%;
+  color: #393a36;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 10px 11px;
+  background: #fff;
+  font-size: 10px;
+  resize: vertical;
+  transition: 150ms ease;
+}
+
+.settings-form-grid input:focus,
+.settings-form-grid select:focus {
+  border-color: rgba(195, 134, 39, 0.65);
+  box-shadow: 0 0 0 3px rgba(195, 134, 39, 0.08);
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.settings-nav {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+}
+
+.settings-nav button {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  color: #66655f;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 11px;
+  background: transparent;
+  font-size: 10px;
+  text-align: left;
+}
+
+.settings-nav button.active {
+  color: #885c17;
+  background: var(--gold-soft);
+}
+
+.settings-panel {
+  min-height: 480px;
+}
+
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.settings-form-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.settings-form-grid label > span {
+  color: #5c5b56;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.integration-health {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.integration-health h3 {
+  margin: 0 0 2px;
+  font-size: 12px;
+}
+
+.integration-health > div {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  color: #65645f;
+  border: 1px solid #eeeae3;
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 9px;
+}
+
+.integration-health strong {
+  font-size: 8px;
+}
+
+@include respond-to-tablet {
+  .settings-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-nav {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@include respond-to-mobile {
+  .settings-nav {
+    grid-template-columns: 1fr;
+  }
+}

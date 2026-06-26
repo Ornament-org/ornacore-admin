@@ -1,0 +1,555 @@
+import {
+  AlertTriangle,
+  CalendarDays,
+  ChevronDown,
+  Coins,
+  Gem,
+  IndianRupee,
+  MinusCircle,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { usePermissions } from "../../auth/permissions.js";
+import { khatabookService } from "../../../services/resourceServices.js";
+import { formatMoney, formatQuantity } from "./khatabookFormatters.js";
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+const emptyItem = (tunch = "") => ({ itemName: "", grossWeight: "", tunch });
+
+const today = () => new Date().toISOString().slice(0, 10);
+const toNumber = (v) => (v === "" || v == null ? 0 : Number(v));
+const q = (v) => Number(v || 0).toFixed(3);
+
+const fineWeight = (item) => {
+  const gw = toNumber(item.grossWeight);
+  const t = toNumber(item.tunch);
+  return gw && t ? q((gw * t) / 100) : "0.000";
+};
+
+const cashToFine = (cash, rate) => {
+  const c = toNumber(cash);
+  const r = toNumber(rate);
+  return c > 0 && r > 0 ? q((c / r) * 10) : "0.000";
+};
+
+const errorDetails = (err) => err.response?.data?.error?.details ?? null;
+
+// ── Collection type pill selector ─────────────────────────────────────────────
+
+const COLLECTION_TYPES = [
+  { value: "none", label: "No Collection", icon: MinusCircle },
+  { value: "metal", label: "Metal",        icon: Gem          },
+  { value: "cash",  label: "Cash",          icon: IndianRupee  },
+];
+
+function CollectionTypePills({ value, onChange }) {
+  return (
+    <div className="khatabook-coll-pills">
+      {COLLECTION_TYPES.map(({ value: v, label, icon: Icon }) => (
+        <button
+          key={v}
+          type="button"
+          className={
+            "khatabook-coll-pill" + (value === v ? " is-active" : "")
+          }
+          onClick={() => onChange(v)}
+        >
+          <Icon size={14} />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function CreateKhatabookOrder({
+  shopkeeperId,
+  metals = [],
+  defaultMetalId = "",
+  onCancel,
+  onCreated,
+}) {
+  const { hasPermission } = usePermissions();
+  const canOverride = hasPermission("shopkeeper.credit_limit.update");
+  const firstMetalId = defaultMetalId || metals[0]?.metal?.id || "";
+
+  const [form, setForm] = useState({
+    metalId: firstMetalId ? String(firstMetalId) : "",
+    entryDate: today(),
+    defaultTunch: "52",
+    notes: "",
+    overrideCreditLimit: false,
+    collection: {
+      type: "none",      // "none" | "metal" | "cash"
+      metalReceived: "",  // gm fine weight (metal type)
+      cashReceived: "",   // ₹ (cash type)
+      metalRate: "",      // ₹ per 10 gm — used to convert cash → fine
+    },
+  });
+
+  const [items, setItems] = useState([emptyItem("52")]);
+  const [saving, setSaving] = useState(false);
+  const [creditError, setCreditError] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!form.metalId && firstMetalId)
+      setForm((f) => ({ ...f, metalId: String(firstMetalId) }));
+  }, [firstMetalId, form.metalId]);
+
+  const selectedSummary = useMemo(
+    () => metals.find((r) => String(r.metal.id) === String(form.metalId)),
+    [form.metalId, metals],
+  );
+
+  const metalName = selectedSummary?.metal?.name ?? "Metal";
+
+  const validItems = useMemo(
+    () =>
+      items.filter(
+        (it) => it.itemName.trim() && toNumber(it.grossWeight) > 0 && toNumber(it.tunch) > 0,
+      ),
+    [items],
+  );
+
+  const localFineDelivered = useMemo(
+    () => q(validItems.reduce((s, it) => s + Number(fineWeight(it)), 0)),
+    [validItems],
+  );
+
+  // derived fine credit shown in the collection panel
+  const localCashFine = useMemo(
+    () => cashToFine(form.collection.cashReceived, form.collection.metalRate),
+    [form.collection.cashReceived, form.collection.metalRate],
+  );
+
+  const payload = useMemo(() => {
+    const { type, metalReceived, cashReceived, metalRate } = form.collection;
+    return {
+      shopkeeperId: Number(shopkeeperId),
+      metalId: Number(form.metalId),
+      entryDate: form.entryDate,
+      notes: form.notes,
+      overrideCreditLimit: form.overrideCreditLimit,
+      items: validItems.map((it) => ({
+        itemName: it.itemName.trim(),
+        grossWeight: Number(it.grossWeight),
+        tunch: Number(it.tunch),
+      })),
+      collection: {
+        metalReceived: type === "metal" ? toNumber(metalReceived) : 0,
+        cashReceived:  type === "cash"  ? toNumber(cashReceived)  : 0,
+        metalRate:
+          type === "cash" && metalRate ? Number(metalRate) : undefined,
+      },
+    };
+  }, [form, shopkeeperId, validItems]);
+
+  // live preview (debounced 250 ms)
+  useEffect(() => {
+    if (!form.metalId || validItems.length === 0) {
+      setPreview(null);
+      setCreditError(null);
+      return;
+    }
+    let alive = true;
+    const timer = setTimeout(() => {
+      khatabookService
+        .previewOrder(payload)
+        .then((res) => {
+          if (!alive) return;
+          setPreview(res.data);
+          setCreditError(res.data?.creditLimitExceeded ? res.data : null);
+        })
+        .catch(() => { if (alive) setPreview(null); });
+    }, 250);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [form.metalId, payload, validItems.length]);
+
+  // ── updaters ────────────────────────────────────────────────────────────────
+
+  const setField = (key, val) => {
+    setForm((f) => ({ ...f, [key]: val }));
+    setCreditError(null);
+    setError("");
+  };
+
+  const setCollField = (key, val) => {
+    setForm((f) => ({ ...f, collection: { ...f.collection, [key]: val } }));
+    setCreditError(null);
+    setError("");
+  };
+
+  const setCollType = (type) => {
+    setForm((f) => ({
+      ...f,
+      collection: { ...f.collection, type, metalReceived: "", cashReceived: "" },
+    }));
+  };
+
+  const setDefaultTunch = (val) => {
+    setForm((f) => ({ ...f, defaultTunch: val }));
+    setItems((its) => its.map((it) => ({ ...it, tunch: it.tunch || val })));
+  };
+
+  const updateItem = (idx, key, val) => {
+    setItems((its) => its.map((it, i) => (i === idx ? { ...it, [key]: val } : it)));
+    setCreditError(null);
+    setError("");
+  };
+
+  const addItem    = () => setItems((its) => [...its, emptyItem(form.defaultTunch)]);
+  const removeItem = (idx) =>
+    setItems((its) => (its.length === 1 ? [emptyItem(form.defaultTunch)] : its.filter((_, i) => i !== idx)));
+
+  const submit = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await khatabookService.createOrder(payload);
+      onCreated();
+    } catch (err) {
+      const details = errorDetails(err);
+      if (err.response?.data?.error?.code === "CREDIT_LIMIT_EXCEEDED")
+        setCreditError(details);
+      setError(
+        err.response?.data?.error?.message ||
+        err.userMessage ||
+        err.message ||
+        "Unable to create order.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── derived preview / display values ────────────────────────────────────────
+
+  const currentDue           = preview?.currentDue           ?? selectedSummary?.currentRunningDue ?? "0.000";
+  const creditLimit          = preview?.creditLimit           ?? selectedSummary?.creditLimit       ?? "0.000";
+  const availableCredit      = preview?.availableCredit       ?? selectedSummary?.availableCredit   ?? "0.000";
+  const fineDelivered        = preview?.fineDelivered         ?? localFineDelivered;
+  const totalBeforeColl      = preview?.totalBeforeCollection ?? q(Number(currentDue) + Number(fineDelivered));
+  const collectionCredit     = preview?.collectionCredit      ?? "0.000";
+  const attemptedDue         = preview?.attemptedDue          ?? q(Math.max(0, Number(totalBeforeColl) - Number(collectionCredit)));
+  const exceededBy           = preview?.exceededBy            ?? q(Math.max(0, Number(attemptedDue) - Number(creditLimit)));
+  const limitCrossed         = Number(exceededBy) > 0;
+  const saveDisabled         = saving || !form.metalId || validItems.length === 0 || (limitCrossed && !form.overrideCreditLimit);
+
+  const collType = form.collection.type;
+
+  // ── render ───────────────────────────────────────────────────────────────────
+
+  return (
+    <section className="khatabook-create">
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header className="khatabook-create__headline">
+        <div>
+          <h2>Create New Order</h2>
+          <p>Record delivered jewellery and optional collection at time of delivery.</p>
+        </div>
+        <div className="khatabook-create__header-actions">
+          <button type="button" onClick={onCancel}><X size={16} /> Cancel</button>
+          <button disabled={saveDisabled} type="button" onClick={submit}>
+            <Save size={16} />
+            {saving ? "Saving…" : "Save Order"}
+          </button>
+        </div>
+      </header>
+
+      {/* ── Top fields: date / order id / metal / metrics ──────────────────── */}
+      <div className="khatabook-create__topline">
+        <label>
+          <span>Order Date</span>
+          <div className="khatabook-create__input-icon">
+            <input
+              type="date"
+              value={form.entryDate}
+              onChange={(e) => setField("entryDate", e.target.value)}
+            />
+            <CalendarDays size={15} />
+          </div>
+        </label>
+        <label>
+          <span>Order ID</span>
+          <input disabled value="Auto generated" />
+        </label>
+        <label>
+          <span>Metal</span>
+          <div className="khatabook-create__metal-select">
+            <b>{selectedSummary?.metal?.code?.slice(0, 2) ?? "Au"}</b>
+            <select
+              value={form.metalId}
+              onChange={(e) => setField("metalId", e.target.value)}
+            >
+              <option value="">Select metal</option>
+              {metals.map((r) => (
+                <option key={r.metal.id} value={r.metal.id}>{r.metal.name}</option>
+              ))}
+            </select>
+            <ChevronDown size={15} />
+          </div>
+        </label>
+        <div className="khatabook-create__metric">
+          <span>Running Due</span>
+          <strong>{formatQuantity(currentDue)}</strong>
+        </div>
+        <div className="khatabook-create__metric">
+          <span>Credit Limit</span>
+          <strong>{formatQuantity(creditLimit)}</strong>
+        </div>
+        <div className="khatabook-create__metric">
+          <span>Available Credit</span>
+          <strong className="is-green">{formatQuantity(availableCredit)}</strong>
+        </div>
+        <div className="khatabook-create__metric">
+          <span>Limit Crossed</span>
+          <strong className={limitCrossed ? "is-red" : ""}>
+            {formatQuantity(exceededBy)}
+            {limitCrossed && <AlertTriangle size={15} />}
+          </strong>
+        </div>
+      </div>
+
+      {/* ── Sub fields: tunch / note ────────────────────────────────────────── */}
+      <div className="khatabook-create__subline">
+        <label>
+          <span>Default Tunch / Purity</span>
+          <input
+            type="number"
+            min="0"
+            value={form.defaultTunch}
+            onChange={(e) => setDefaultTunch(e.target.value)}
+          />
+        </label>
+        <label>
+          <span>Note (optional)</span>
+          <input
+            placeholder="Add note…"
+            value={form.notes}
+            onChange={(e) => setField("notes", e.target.value)}
+          />
+        </label>
+      </div>
+
+      {/* ── Items table ────────────────────────────────────────────────────── */}
+      <div className="khatabook-create__items-head">
+        <h3>Items Delivered</h3>
+        <button type="button" onClick={addItem}><Plus size={15} /> Add Item</button>
+      </div>
+
+      <div className="khatabook-create__table">
+        <div className="khatabook-create__row khatabook-create__row--head">
+          <span>#</span>
+          <span>Item Name</span>
+          <span>Gross Weight (gm)</span>
+          <span>Tunch (%)</span>
+          <span>Fine Weight (gm)</span>
+          <span></span>
+        </div>
+        {items.map((item, idx) => {
+          const pi = preview?.items?.[idx];
+          return (
+            <div className="khatabook-create__row" key={idx}>
+              <span>{idx + 1}</span>
+              <input
+                placeholder="Item name"
+                value={item.itemName}
+                onChange={(e) => updateItem(idx, "itemName", e.target.value)}
+              />
+              <input
+                type="number" min="0" step="0.001"
+                value={item.grossWeight}
+                onChange={(e) => updateItem(idx, "grossWeight", e.target.value)}
+              />
+              <input
+                type="number" min="0" step="0.001"
+                value={item.tunch}
+                onChange={(e) => updateItem(idx, "tunch", e.target.value)}
+              />
+              <strong>{formatQuantity(pi?.fineWeight ?? fineWeight(item))}</strong>
+              <button aria-label="Remove item" type="button" onClick={() => removeItem(idx)}>
+                <Trash2 size={15} />
+              </button>
+            </div>
+          );
+        })}
+        <div className="khatabook-create__total">
+          <span>
+            <strong>Total Fine Weight</strong>
+            <small>Calculated from weight × tunch</small>
+          </span>
+          <strong>{formatQuantity(fineDelivered)}</strong>
+        </div>
+
+        {/* Credit limit exceeded banner */}
+        {limitCrossed && (
+          <div className="khatabook-create__limitbar">
+            <div className="khatabook-create__limitbar-content">
+              <div className="khatabook-create__limitbar-icon">
+                <AlertTriangle size={18} />
+              </div>
+              <div className="khatabook-create__limitbar-text">
+                <div className="khatabook-create__limitbar-title">Credit Limit Exceeded</div>
+                <div className="khatabook-create__limitbar-description">
+                  This order exceeds the credit limit by{" "}
+                  <strong>{formatQuantity(exceededBy)}</strong>.
+                </div>
+              </div>
+            </div>
+            {canOverride ? (
+              <div className="khatabook-create__override">
+                <div className="khatabook-create__override-content">
+                  <span className="khatabook-create__override-title">Override Credit Limit</span>
+                  <span className="khatabook-create__override-description">
+                    Allow this order beyond the approved credit limit.
+                  </span>
+                </div>
+                <label className="khatabook-create__switch">
+                  <input
+                    type="checkbox"
+                    checked={form.overrideCreditLimit}
+                    onChange={(e) => setField("overrideCreditLimit", e.target.checked)}
+                  />
+                  <span className="khatabook-create__slider" />
+                </label>
+              </div>
+            ) : (
+              <div className="khatabook-create__override-required">
+                You do not have permission to override credit limits
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom panels: Collection + Due Summary ─────────────────────────── */}
+      <div className="khatabook-create__panels">
+
+        {/* Collection panel */}
+        <section className="khatabook-create__panel">
+          <h3>Collection at Delivery <small>(Optional)</small></h3>
+
+          {/* Type selector pills */}
+          <CollectionTypePills value={collType} onChange={setCollType} />
+
+          {/* Metal fields */}
+          {collType === "metal" && (
+            <div className="khatabook-coll-fields">
+              <label>
+                <span><Gem size={12} /> {metalName} Fine Weight Received (gm)</span>
+                <input
+                  type="number" min="0" step="0.001"
+                  placeholder="0.000"
+                  value={form.collection.metalReceived}
+                  onChange={(e) => setCollField("metalReceived", e.target.value)}
+                />
+              </label>
+              {toNumber(form.collection.metalReceived) > 0 && (
+                <div className="khatabook-coll-result">
+                  <Gem size={13} />
+                  <span>{metalName} credit applied</span>
+                  <strong>{formatQuantity(form.collection.metalReceived)}</strong>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cash fields */}
+          {collType === "cash" && (
+            <div className="khatabook-coll-fields">
+              <label>
+                <span><IndianRupee size={12} /> Cash Received (₹)</span>
+                <input
+                  type="number" min="0"
+                  placeholder="0"
+                  value={form.collection.cashReceived}
+                  onChange={(e) => setCollField("cashReceived", e.target.value)}
+                />
+              </label>
+              <label>
+                <span><Coins size={12} /> {metalName} Rate (₹ per 10 gm)</span>
+                <input
+                  type="number" min="0"
+                  placeholder="e.g. 9500"
+                  value={form.collection.metalRate}
+                  onChange={(e) => setCollField("metalRate", e.target.value)}
+                />
+              </label>
+              {toNumber(form.collection.cashReceived) > 0 && (
+                <div className="khatabook-coll-result">
+                  <IndianRupee size={13} />
+                  <span>{formatMoney(toNumber(form.collection.cashReceived))} →</span>
+                  <strong>
+                    {toNumber(form.collection.metalRate) > 0
+                      ? `${formatQuantity(localCashFine)} fine`
+                      : "Enter rate to calculate"}
+                  </strong>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* None state hint */}
+          {collType === "none" && (
+            <div className="khatabook-coll-hint">
+              No collection recorded at delivery. You can add collections later from the order.
+            </div>
+          )}
+
+          {/* Total credit bar */}
+          <div className="khatabook-create__credit-total">
+            <span>Total Credit (in fine gm)</span>
+            <strong>{formatQuantity(collectionCredit)}</strong>
+          </div>
+        </section>
+
+        {/* Due Summary panel */}
+        <section className="khatabook-create__panel khatabook-create__panel--summary">
+          <h3>Due Summary <small>(Auto Calculated)</small></h3>
+          <dl>
+            <dt>Previous Running Due</dt>
+            <dd>{formatQuantity(currentDue)}</dd>
+            <dt>Fine Delivered (this order)</dt>
+            <dd>{formatQuantity(fineDelivered)}</dd>
+            <dt>Total Before Collection</dt>
+            <dd>{formatQuantity(totalBeforeColl)}</dd>
+            <dt>Collection Credit Applied</dt>
+            <dd>{formatQuantity(collectionCredit)}</dd>
+          </dl>
+          <div className="khatabook-create__running-due">
+            <span>New Running Due</span>
+            <strong>{formatQuantity(attemptedDue)}</strong>
+          </div>
+        </section>
+
+      </div>
+
+      {/* ── Footer actions ─────────────────────────────────────────────────── */}
+      <div className="khatabook-create__header-actions">
+        <button type="button" onClick={onCancel}><X size={16} /> Cancel</button>
+        <button disabled={saveDisabled} type="button" onClick={submit}>
+          <Save size={16} />
+          {saving ? "Saving…" : "Save Order"}
+        </button>
+      </div>
+
+      {/* ── Errors ─────────────────────────────────────────────────────────── */}
+      {error && <div className="khatabook-create__error">{error}</div>}
+      {creditError && !canOverride && (
+        <div className="khatabook-create__error">
+          You do not have permission to override the credit limit.
+        </div>
+      )}
+
+    </section>
+  );
+}

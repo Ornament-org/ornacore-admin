@@ -1,0 +1,25 @@
+.staff-notice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #217a4b;
+  border: 1px solid #bfe4cd;
+  border-radius: 9px;
+  padding: 11px 13px;
+  background: #edf9f2;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.staff-auto-role {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #f8f6f1;
+  color: #3a352d;
+  font-size: 12px;
+  font-weight: 700;
+}

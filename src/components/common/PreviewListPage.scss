@@ -1,0 +1,181 @@
+@use "../../styles/breakpoints" as *;
+
+// Styles owned by PreviewListPage.
+
+.filter-select {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--muted);
+  border: 1px solid #e5ded4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.filter-select select {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 9px;
+}
+
+.filter-select select:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.filter-tabs {
+  display: inline-flex;
+  overflow: hidden;
+  max-width: 100%;
+  border: 1px solid #e5ded4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.filter-tabs button {
+  min-height: 34px;
+  min-width: 72px;
+  color: #6f695f;
+  border: 0;
+  border-right: 1px solid #eee7dd;
+  padding: 0 11px;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filter-tabs button:last-child {
+  border-right: 0;
+}
+
+.filter-tabs button.is-active {
+  color: #fff;
+  background: var(--gold);
+}
+
+.filter-tabs button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.table-search {
+  display: flex;
+  width: min(360px, 45%);
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  color: #9a9790;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fcfbf9;
+  
+}
+
+.table-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+}
+
+.table-toolbar__actions {
+  display: flex;
+  gap: 7px;
+}
+
+.filter-button {
+  display: inline-flex;
+  min-height: 35px;
+  align-items: center;
+  gap: 7px;
+  color: #66655f;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 11px;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filter-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.filter-button .is-spinning {
+  animation: filter-spin 800ms linear infinite;
+}
+
+@keyframes filter-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@include respond-to-tablet {
+  .table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-search {
+    width: 100%;
+  }
+}
+
+@include respond-to-mobile {
+  .table-toolbar__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .filter-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .filter-tabs button {
+    flex: 1 0 auto;
+    min-height: 44px;
+  }
+
+  .filter-button {
+    flex: 1;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .filter-select {
+    flex: 1;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .table-search {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .table-search input {
+    font-size: 14px; // Prevent iOS zoom
+  }
+}

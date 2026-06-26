@@ -1,0 +1,117 @@
+@use "breakpoints" as *;
+
+// Shared responsive utilities.
+// Use sparingly for layout primitives. Feature-specific visuals should stay
+// inside that feature's own SCSS file.
+
+.responsive-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+
+  @include respond-to-mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  @include respond-to-tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.responsive-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+
+  @include respond-to-desktop-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @include respond-to-tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.responsive-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+
+  @include respond-to-desktop-lg {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @include respond-to-desktop-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @include respond-to-tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.responsive-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  @include respond-to-tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+.responsive-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  @include respond-to-mobile {
+    flex-direction: column;
+    width: 100%;
+
+    > * {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+.responsive-stack-tablet {
+  @include respond-to-tablet {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-stack-mobile {
+  @include respond-to-mobile {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.hide-mobile {
+  @include respond-to-mobile {
+    display: none !important;
+  }
+}
+
+.show-mobile-only {
+  display: none !important;
+
+  @include respond-to-mobile {
+    display: revert !important;
+  }
+}
