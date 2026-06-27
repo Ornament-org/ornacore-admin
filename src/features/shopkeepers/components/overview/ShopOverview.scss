@@ -14,6 +14,12 @@
   gap: 16px;
 }
 
+.shop-overview__analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
 /* ══════════════════════════════════════════════════════════════
    Shop Info Card
 ══════════════════════════════════════════════════════════════ */
@@ -236,7 +242,6 @@
 ══════════════════════════════════════════════════════════════ */
 
 .metal-analytics {
-  /* extra badge in header */
   .sd-info-card__header {
     gap: 10px;
   }
@@ -252,70 +257,133 @@
   }
 }
 
-.metal-analytics__section {
-  border-top: 1px solid #f0ebe2;
+.metal-analytics__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 16px;
+}
 
-  & + & {
-    border-top: 1.5px solid #ece7de;
+.metal-analytics__metal-card {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  border: 1.5px solid #ece7de;
+  border-radius: 16px;
+  padding: 20px 24px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  &.has-due {
+    background: linear-gradient(135deg, #fff 58%, #fff7ed 100%);
   }
 }
 
-.metal-analytics__section-header {
+.metal-analytics__metal-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px 8px;
-  background: #fcfaf7;
-  border-bottom: 1px solid #f5f0e8;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.metal-analytics__metal-name {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+.metal-analytics__metal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+
+  strong {
+    color: #111827;
+    font-size: 16px;
+    font-weight: 800;
+  }
+}
+
+.metal-analytics__metal-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(197, 138, 42, 0.1);
   color: #c58a2a;
+  flex-shrink: 0;
 }
 
 .metal-analytics__due-badge {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
-  color: #c2410c;
-  background: rgba(194, 65, 12, 0.08);
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-
-.metal-analytics__rows {
-  padding: 2px 20px 4px;
-}
-
-.metal-analytics__row {
-  display: flex;
-  justify-content: space-between;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f5f0e8;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 
-  &:last-child { border-bottom: 0; }
+  &.is-due {
+    background: #fee2e2;
+    color: #dc2626;
+  }
 
-  &-label {
-    font-size: 13px;
+  &.is-clear {
+    background: #dcfce7;
+    color: #15803d;
+  }
+}
+
+.metal-analytics__stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+
+  &--top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.metal-analytics__stat {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+
+  span {
     color: #6b7280;
+    font-size: 12px;
     font-weight: 500;
   }
 
-  &-value {
-    font-size: 13px;
-    font-weight: 700;
+  strong {
     color: #111827;
-
-    &.is-due     { color: #c2410c; }
-    &.is-credit  { color: #166534; }
-    &.is-advance { color: #16a34a; }
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
   }
+
+  .is-due { color: #dc2626; }
+  .is-credit,
+  .is-advance { color: #15803d; }
+}
+
+.metal-analytics__section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #9ca3af;
+  margin-bottom: -8px;
+}
+
+.metal-analytics__stat-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.metal-analytics__divider {
+  height: 1px;
+  background: #e5e7eb;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -323,7 +391,12 @@
 ══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1100px) {
-  .shop-overview__grid-2 {
+  .shop-overview__grid-2,
+  .shop-overview__analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metal-analytics__grid {
     grid-template-columns: 1fr;
   }
 }

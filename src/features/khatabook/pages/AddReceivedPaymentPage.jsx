@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card } from "../../../components/common/Card.jsx";
 import { FormAlert } from "../../../components/common/FormAlert.jsx";
 import { khatabookService } from "../../../services/resourceServices.js";
 import { PaymentHeaderCard } from "../components/PaymentHeaderCard.jsx";
 import { CurrentPositionCard } from "../components/CurrentPositionCard.jsx";
 import { CollectionTypeSelector } from "../components/CollectionTypeSelector.jsx";
-import { GoldCollectionForm } from "../components/GoldCollectionForm.jsx";
+import { MetalCollectionForm } from "../components/MetalCollectionForm.jsx";
 import { CashCollectionForm } from "../components/CashCollectionForm.jsx";
-import { SettlementPreviewCard } from "../components/SettlementPreviewCard.jsx";
 import { PaymentActions } from "../components/PaymentActions.jsx";
 import { SkeletonPaymentPage } from "../../../components/skeleton/SkeletonPaymentPage.jsx";
 import "./AddReceivedPaymentPage.scss";
@@ -16,39 +14,35 @@ import "./AddReceivedPaymentPage.scss";
 export function AddReceivedPaymentPage() {
   const { shopkeeperId } = useParams();
   const navigate = useNavigate();
-  const [shopkeeper, setShopkeeper] = useState(null);
-  const [metals, setMetals] = useState([]);
-  const [selectedMetalId, setSelectedMetalId] = useState("");
-  const [position, setPosition] = useState(null);
-  const [collectionType, setCollectionType] = useState("metal");
-  const [goldReceived, setGoldReceived] = useState("");
-  const [cashAmount, setCashAmount] = useState("");
-  const [cashRate, setCashRate] = useState("");
-  const [note, setNote] = useState("");
-  const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
-  const selectedMetal = metals?.find((m) => String(m.metal.id) === String(selectedMetalId))?.metal;
+  const [shopkeeper, setShopkeeper] = useState(null);
+  const [metals, setMetals]         = useState([]);
+  const [selectedMetalId, setSelectedMetalId] = useState("");
+
+  const [collectionType, setCollectionType] = useState("metal");
+  const [metalReceived, setMetalReceived]   = useState("");
+  const [cashAmount, setCashAmount]         = useState("");
+  const [cashRate, setCashRate]             = useState("");
+  const [note, setNote]                     = useState("");
+  const [loading, setLoading]               = useState(true);
+  const [submitting, setSubmitting]         = useState(false);
+  const [error, setError]                   = useState("");
+
+  const selectedMetal    = metals?.find((m) => String(m.metal.id) === String(selectedMetalId));
+  const selectedMetalObj = selectedMetal?.metal;
+  const metalName        = selectedMetalObj?.name ?? "Metal";
+
+  const position = selectedMetal
+    ? {
+        outstandingDue:  selectedMetal.outstandingDue,
+        creditLimit:     selectedMetal.creditLimit,
+        availableCredit: selectedMetal.availableCredit,
+      }
+    : null;
 
   useEffect(() => {
     loadShopkeeperData();
-  }, [shopkeeperId]);
-
-  useEffect(() => {
-    if (selectedMetalId) {
-      loadPosition();
-    }
-  }, [selectedMetalId]);
-
-  useEffect(() => {
-    if (selectedMetalId && (goldReceived || (cashAmount && cashRate))) {
-      loadPreview();
-    } else {
-      setPreview(null);
-    }
-  }, [selectedMetalId, collectionType, goldReceived, cashAmount, cashRate]);
+  }, [shopkeeperId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadShopkeeperData = async () => {
     try {
@@ -58,10 +52,9 @@ export function AddReceivedPaymentPage() {
         khatabookService.metals(shopkeeperId),
       ]);
       setShopkeeper(summaryData.shopkeeper);
-      setMetals(metalsData);
-      if (metalsData.length > 0) {
-        setSelectedMetalId(String(metalsData[0].metal.id));
-      }
+      const list = Array.isArray(metalsData) ? metalsData : (metalsData?.data ?? []);
+      setMetals(list);
+      if (list.length > 0) setSelectedMetalId(String(list[0].metal.id));
     } catch (err) {
       setError(err.message || "Failed to load shopkeeper data");
     } finally {
@@ -69,53 +62,26 @@ export function AddReceivedPaymentPage() {
     }
   };
 
-  const loadPosition = async () => {
-    try {
-      const data = await khatabookService.paymentPreview(shopkeeperId, selectedMetalId);
-      setPosition(data);
-    } catch (err) {
-      console.error("Failed to load position:", err);
-    }
-  };
-
-  const loadPreview = async () => {
-    try {
-      const payload = {
-        shopkeeperId: Number(shopkeeperId),
-        metalId: Number(selectedMetalId),
-      };
-      if (collectionType === "metal" && goldReceived) {
-        payload.receivedQuantity = Number(goldReceived);
-      } else if (collectionType === "cash" && cashAmount && cashRate) {
-        payload.cashAmount = Number(cashAmount);
-        payload.metalRate = Number(cashRate);
-      } else {
-        setPreview(null);
-        return;
-      }
-      const data = await khatabookService.previewOrder(payload);
-      setPreview(data);
-    } catch (err) {
-      console.error("Failed to load preview:", err);
-    }
-  };
-
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
       setError("");
-      const payload = {
+      const base = {
         shopkeeperId: Number(shopkeeperId),
-        metalId: Number(selectedMetalId),
-        notes: note || null,
+        metalId:      Number(selectedMetalId),
+        notes:        note || null,
       };
       if (collectionType === "metal") {
-        payload.receivedQuantity = Number(goldReceived);
-        await khatabookService.createGoldCollection(payload);
+        await khatabookService.createMetalCollection({
+          ...base,
+          receivedQuantity: Number(metalReceived),
+        });
       } else {
-        payload.cashAmount = Number(cashAmount);
-        payload.metalRate = Number(cashRate);
-        await khatabookService.createCashCollection(payload);
+        await khatabookService.createCashCollection({
+          ...base,
+          cashAmount: Number(cashAmount),
+          metalRate:  Number(cashRate),
+        });
       }
       navigate(`/shopkeepers/${shopkeeperId}/khatabook`, {
         state: { message: "Payment received successfully" },
@@ -130,8 +96,8 @@ export function AddReceivedPaymentPage() {
   const isSubmitDisabled =
     submitting ||
     !selectedMetalId ||
-    (collectionType === "metal" && !goldReceived) ||
-    (collectionType === "cash" && (!cashAmount || !cashRate));
+    (collectionType === "metal" && !(Number(metalReceived) > 0)) ||
+    (collectionType === "cash" && (!(Number(cashAmount) > 0) || !(Number(cashRate) > 0)));
 
   if (loading) return <SkeletonPaymentPage />;
   if (error && !shopkeeper) return <FormAlert>{error}</FormAlert>;
@@ -141,7 +107,7 @@ export function AddReceivedPaymentPage() {
       <div className="payment-page__header">
         <div>
           <h1>Add Received Payment</h1>
-          <p>Add gold or cash payment received from {shopkeeper?.shopName}</p>
+          <p>Add {metalName.toLowerCase()} or cash payment received from {shopkeeper?.shopName}</p>
         </div>
         <PaymentActions onCancel={() => navigate(-1)} onSubmit={handleSubmit} disabled={isSubmitDisabled} />
       </div>
@@ -151,17 +117,26 @@ export function AddReceivedPaymentPage() {
       <PaymentHeaderCard shopkeeper={shopkeeper} />
 
       <div className="payment-page__grid">
-        <CurrentPositionCard position={position} metal={selectedMetal} />
-        <CollectionTypeSelector collectionType={collectionType} onChange={setCollectionType} />
+        <CurrentPositionCard position={position} metal={selectedMetalObj} />
+        <CollectionTypeSelector
+          collectionType={collectionType}
+          metalName={metalName}
+          onChange={(type) => {
+            setCollectionType(type);
+            if (type === "cash")  setMetalReceived("");
+            if (type === "metal") { setCashAmount(""); setCashRate(""); }
+          }}
+        />
       </div>
 
       <div className="payment-page__grid">
         {collectionType === "metal" ? (
-          <GoldCollectionForm
-            value={goldReceived}
-            onChange={setGoldReceived}
+          <MetalCollectionForm
+            value={metalReceived}
+            onChange={setMetalReceived}
             note={note}
             onNoteChange={setNote}
+            metalName={metalName}
           />
         ) : (
           <CashCollectionForm
@@ -171,10 +146,8 @@ export function AddReceivedPaymentPage() {
             onRateChange={setCashRate}
             note={note}
             onNoteChange={setNote}
-            convertedValue={preview?.fineDelivered}
           />
         )}
-        {preview && <SettlementPreviewCard preview={preview} />}
       </div>
     </div>
   );

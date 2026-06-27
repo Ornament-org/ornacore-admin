@@ -1,0 +1,39 @@
+.sk-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  &__id {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  &__phone {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 1px;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+}

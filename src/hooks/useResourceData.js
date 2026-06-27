@@ -38,11 +38,15 @@ export function useResourceData({
       .then((response) => {
         if (active) {
           const rows = extractRows(response);
+          const rawMeta = response?.meta ?? response?.data?.meta ?? null;
+          const normalizedMeta = rawMeta
+            ? { ...rawMeta, total: rawMeta.totalItems ?? rawMeta.total ?? 0 }
+            : null;
           setRequest({
             service,
             requestKey,
             rows: mapRows(rows),
-            meta: response?.meta ?? response?.data?.meta ?? null,
+            meta: normalizedMeta,
             error: null,
             complete: true,
           });

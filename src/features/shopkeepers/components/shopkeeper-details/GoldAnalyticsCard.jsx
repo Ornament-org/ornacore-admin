@@ -5,45 +5,56 @@ import { khatabookService } from "../../../../services/resourceServices.js";
 
 const fmt = (v) => `${Number(v ?? 0).toFixed(3)} g`;
 
-function Row({ label, value, className = "" }) {
+function Stat({ label, value, className = "" }) {
   return (
-    <div className="metal-analytics__row">
-      <span className="metal-analytics__row-label">{label}</span>
-      <strong className={`metal-analytics__row-value ${className}`.trim()}>{value}</strong>
+    <div className="metal-analytics__stat">
+      <span>{label}</span>
+      <strong className={className}>{value}</strong>
     </div>
   );
 }
 
-function MetalSection({ data, isLast }) {
+function MetalSection({ data }) {
   const hasDue     = Number(data.outstandingDue ?? 0) > 0;
   const hasCredit  = Number(data.availableCredit ?? 0) > 0;
   const hasAdvance = Number(data.advanceBalance ?? 0) > 0;
+  const metalName  = data.metal?.name ?? "Metal";
 
   return (
-    <div className={`metal-analytics__section${isLast ? " is-last" : ""}`}>
-      <div className="metal-analytics__section-header">
-        <span className="metal-analytics__metal-name">{data.metal?.name ?? "Metal"}</span>
-        {hasDue && (
-          <span className="metal-analytics__due-badge">{fmt(data.outstandingDue)} due</span>
-        )}
+    <div className={`metal-analytics__metal-card${hasDue ? " has-due" : ""}`}>
+      <div className="metal-analytics__metal-head">
+        <div className="metal-analytics__metal-title">
+          <span className="metal-analytics__metal-icon">
+            <ChartNoAxesCombined size={18} />
+          </span>
+          <strong>{metalName}</strong>
+        </div>
+        <span className={`metal-analytics__due-badge${hasDue ? " is-due" : " is-clear"}`}>
+          {fmt(data.outstandingDue)} due
+        </span>
       </div>
 
-      <div className="metal-analytics__rows">
-        <Row
+      <div className="metal-analytics__stat-grid metal-analytics__stat-grid--top">
+        <Stat
           label="Outstanding Due"
           value={fmt(data.outstandingDue)}
           className={hasDue ? "is-due" : ""}
         />
-        <Row label="Delivered"        value={fmt(data.deliveredQuantity)} />
-        <Row label="Received"         value={fmt(data.receivedQuantity)}  />
-        <Row label="Credit Limit"     value={fmt(data.creditLimit)}       />
-        <Row
+        <Stat label="Delivered" value={fmt(data.deliveredQuantity)} />
+        <Stat label="Received" value={fmt(data.receivedQuantity)} />
+      </div>
+
+      <div className="metal-analytics__divider" />
+
+      <div className="metal-analytics__stat-grid">
+        <Stat label="Credit Limit" value={fmt(data.creditLimit)} />
+        <Stat
           label="Available Credit"
           value={fmt(data.availableCredit)}
           className={hasCredit ? "is-credit" : ""}
         />
         {hasAdvance && (
-          <Row
+          <Stat
             label="Advance Balance"
             value={fmt(data.advanceBalance)}
             className="is-advance"
@@ -73,7 +84,6 @@ export function GoldAnalyticsCard({ shopkeeperId }) {
 
   useEffect(() => {
     if (!shopkeeperId) return;
-    setLoading(true);
     khatabookService
       .metals(shopkeeperId)
       .then((res) => setMetals(res.data ?? []))
@@ -84,9 +94,6 @@ export function GoldAnalyticsCard({ shopkeeperId }) {
   return (
     <div className="sd-info-card metal-analytics">
       <div className="sd-info-card__header">
-        <div className="sd-info-card__icon">
-          <ChartNoAxesCombined size={18} />
-        </div>
         <h2 className="sd-info-card__title">Metal Analytics</h2>
         {!loading && metals.length > 0 && (
           <span className="metal-analytics__count">{metals.length} metal{metals.length > 1 ? "s" : ""}</span>
@@ -100,13 +107,14 @@ export function GoldAnalyticsCard({ shopkeeperId }) {
           No metal data found.
         </div>
       ) : (
-        metals.map((metalData, idx) => (
-          <MetalSection
-            key={metalData.metal?.id ?? idx}
-            data={metalData}
-            isLast={idx === metals.length - 1}
-          />
-        ))
+        <div className="metal-analytics__grid">
+          {metals.map((metalData, idx) => (
+            <MetalSection
+              key={metalData.metal?.id ?? idx}
+              data={metalData}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

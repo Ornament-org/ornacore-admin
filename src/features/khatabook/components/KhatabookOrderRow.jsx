@@ -2,7 +2,8 @@ import { ChevronDown, ChevronUp, Gem } from "lucide-react";
 import { ExpandedOrderCard } from "./ExpandedOrderCard.jsx";
 import { formatQuantity, formatTime, humanStatus } from "./khatabookFormatters.js";
 
-export function KhatabookOrderRow({ order, expanded, onToggle, onViewLedger }) {
+// BUG-3: pass collection handlers down to ExpandedOrderCard
+export function KhatabookOrderRow({ order, expanded, onToggle, onViewLedger, onAddMetalCollection, onAddCashCollection }) {
   const date = new Date(order.entryDate);
   const dueIsClear = Number(order.orderDue ?? order.outstandingDue) <= 0;
 
@@ -42,7 +43,14 @@ export function KhatabookOrderRow({ order, expanded, onToggle, onViewLedger }) {
           {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </span>
       </button>
-      {expanded && <ExpandedOrderCard order={order} onViewLedger={onViewLedger} />}
+      {expanded && (
+        <ExpandedOrderCard
+          order={order}
+          onViewLedger={onViewLedger}
+          onAddMetalCollection={onAddMetalCollection}
+          onAddCashCollection={onAddCashCollection}
+        />
+      )}
     </article>
   );
 }

@@ -1,70 +1,154 @@
-import { Ban, CheckCircle2, CircleOff, CircleX, Eye, Pencil, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Download,
+  Plus,
+  Users,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { EntityCell } from "../../../components/common/EntityCell.jsx";
-import { PreviewListPage } from "../../../components/common/PreviewListPage.jsx";
+import { Button } from "../../../components/common/Button.jsx";
+import { PageHeader } from "../../../components/layout/PageHeader.jsx";
 import { ResourceFormModal } from "../../../components/common/ResourceFormModal.jsx";
-import { StatusBadge } from "../../../components/common/StatusBadge.jsx";
-import { shopkeeperRows } from "../../../data/demoData.js";
+import { useResourceData } from "../../../hooks/useResourceData.js";
 import { metalService, shopkeeperService } from "../../../services/resourceServices.js";
-import { formatCurrency } from "../../../utils/formatters.js";
 import { MetalCreditLimitEditor } from "../components/MetalCreditLimitEditor.jsx";
+import { ShopkeeperTable } from "../components/ShopkeeperTable.jsx";
+import { ShopkeeperToolbar } from "../components/ShopkeeperToolbar.jsx";
+import { StatCard } from "../components/StatCard.jsx";
+import { useShopkeeperStats } from "../hooks/useShopkeeperData.js";
+import { invalidateAll } from "../store/shopkeeperSlice.js";
+import { useDispatch } from "react-redux";
+import "./ShopkeepersPage.scss";
 
-const columns = [
-  {
-    key: "shop",
-    label: "Shopkeeper",
-    render: (value, row) => (
-      <EntityCell
-        initials={value
-          .split(" ")
-          .map((part) => part[0])
-          .join("")
-          .slice(0, 2)}
-        title={value}
-        subtitle={row.id}
-      />
-    ),
-  },
-  { key: "owner", label: "Owner" },
-  { key: "city", label: "City" },
-  { key: "status", label: "Status", render: (value) => <StatusBadge status={value} /> },
-  { key: "due", label: "Due Amount" },
-  { key: "staff", label: "Assigned Staff" },
-];
+const PAGE_SIZE = 20;
 
-const statusByTitle = {
+const STATUS_BY_TITLE = {
   "Pending Approval": "PENDING_REVIEW",
   "Approved Shopkeepers": "APPROVED",
   "Rejected Shopkeepers": "REJECTED",
   "Suspended Shopkeepers": "SUSPENDED",
 };
 
+const SORT_PARAM = {
+  recent: "-createdAt",
+  oldest: "createdAt",
+  due_desc: "-cashDue",
+  due_asc: "cashDue",
+};
+
 const mapShopkeepers = (rows) =>
-  rows.map((row) => ({
-    ...row,
-    shop: row.shopName,
-    owner: row.ownerName,
-    due: formatCurrency(row.dueAmount),
-    staff: row.assignedSalesperson?.fullName ?? "Unassigned",
-    creditLimits: row.metalCreditLimits ?? row.creditLimits ?? [],
-  }));
+  rows.map((row) => {
+    const creditLimits = row.metalCreditLimits ?? row.creditLimits ?? [];
+    const metalDues =
+      Array.isArray(row.metalDues) && row.metalDues.length > 0
+        ? row.metalDues
+        : creditLimits.map((cl) => ({
+            metalId: String(cl.metalId ?? cl.metal?.id ?? ""),
+            name: cl.metal?.name ?? "Metal",
+            code: cl.metal?.code ?? "",
+            dueGrams: "0.000",
+          }));
+    return {
+      ...row,
+      shopId: row.shopId ?? row.id,
+      creditLimits,
+      metalDues,
+      cashDue: row.cashDue ?? row.dueAmount ?? 0,
+    };
+  });
 
 export function ShopkeepersPage({ title = "All Shopkeepers" }) {
   const navigate = useNavigate();
+  const titleStatus = STATUS_BY_TITLE[title];
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sort, setSort] = useState("recent");
+  const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [metals, setMetals] = useState([]);
-  const [modal, setModal] = useState({ open: false, type: null, record: null, refresh: null });
-  const query = useMemo(
-    () => (statusByTitle[title] ? { status: statusByTitle[title] } : {}),
-    [title],
-  );
+  const [modal, setModal] = useState({ open: false, type: null, record: null });
+  const dispatch = useDispatch();
+
+  // Stats from Redux — fetched once, shared across all components
+  const { stats } = useShopkeeperStats();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     metalService
       .list({ pageSize: 100 })
-      .then((response) => setMetals(response.data ?? []))
+      .then((r) => setMetals(Array.isArray(r) ? r : (r?.data ?? [])))
       .catch(() => setMetals([]));
   }, []);
+
+  const params = useMemo(
+    () => ({
+      page,
+      pageSize: PAGE_SIZE,
+      sort: SORT_PARAM[sort],
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(titleStatus
+        ? { status: titleStatus }
+        : statusFilter
+          ? { status: statusFilter }
+          : {}),
+    }),
+    [page, debouncedSearch, sort, titleStatus, statusFilter],
+  );
+
+  const { rows, loading, meta } = useResourceData({
+    service: shopkeeperService,
+    params,
+    mapRows: mapShopkeepers,
+    refreshKey,
+  });
+
+  const total = meta?.totalItems ?? meta?.total ?? 0;
+  const refresh = () => {
+    dispatch(invalidateAll());
+    setRefreshKey((k) => k + 1);
+  };
+
+  const statCards = [
+    {
+      title: "Total Shopkeepers",
+      value: stats.total,
+      subtitle: "Active relationships",
+      icon: Users,
+      type: "total",
+    },
+    {
+      title: "Approved",
+      value: stats.approved,
+      subtitle: stats.approvedPercent ? `${stats.approvedPercent}% of total` : "of total",
+      icon: CheckCircle2,
+      type: "approved",
+    },
+    {
+      title: "Pending Approval",
+      value: stats.pendingApproval,
+      subtitle: "Awaiting review",
+      icon: Clock,
+      type: "pending",
+    },
+    {
+      title: "Overdue Accounts",
+      value: stats?.overdue ?? null,
+      subtitle: "Require attention",
+      icon: AlertCircle,
+      type: "overdue",
+    },
+  ];
 
   const creditLimitField = useMemo(
     () => ({
@@ -78,16 +162,16 @@ export function ShopkeepersPage({ title = "All Shopkeepers" }) {
       ),
       serialize: (value = []) =>
         value
-          .filter((row) => row.metalId && row.creditLimitGrams !== "")
-          .map((row) => ({
-            metalId: Number(row.metalId),
-            creditLimitGrams: Number(row.creditLimitGrams),
+          .filter((r) => r.metalId && r.creditLimitGrams !== "")
+          .map((r) => ({
+            metalId: Number(r.metalId),
+            creditLimitGrams: Number(r.creditLimitGrams),
           })),
     }),
     [metals],
   );
 
-  const fields = useMemo(() => {
+  const modalFields = useMemo(() => {
     if (modal.type === "approve") {
       return [
         creditLimitField,
@@ -112,101 +196,108 @@ export function ShopkeepersPage({ title = "All Shopkeepers" }) {
         creditLimitField,
       ];
     }
-    return [{ name: "reason", label: "Reason", type: "textarea", required: true, fullWidth: true }];
+    return [
+      { name: "reason", label: "Reason", type: "textarea", required: true, fullWidth: true },
+    ];
   }, [creditLimitField, modal.type]);
 
-  const openAction = (type, record, refresh) => setModal({ open: true, type, record, refresh });
+  const openModal = (type, record) => setModal({ open: true, type, record });
+  const closeModal = () => setModal({ open: false, type: null, record: null });
 
-  const canApprove = (status) => ["DRAFT", "PENDING_REVIEW", "REJECTED", "SUSPENDED"].includes(status);
-  const canRequestMoreInfo = (status) => ["DRAFT", "PENDING_REVIEW", "REJECTED", "SUSPENDED"].includes(status);
-  const canSuspend = (status) => ["APPROVED", "REJECTED"].includes(status);
-  const canReject = (status) => ["DRAFT", "PENDING_REVIEW", "SUSPENDED"].includes(status);
-  const canBlock = (status) => ["APPROVED", "REJECTED", "SUSPENDED", "PENDING_REVIEW", "DRAFT"].includes(status);
+  const handleAction = (action, record) => {
+    if (action === "delete") {
+      if (window.confirm(`Delete ${record.shopName}? This cannot be undone.`)) {
+        shopkeeperService.remove(record.id).then(refresh);
+      }
+      return;
+    }
+    openModal(action, record);
+  };
 
-  const rowActions = ({ refresh }) => [
-    {
-      label: "View details",
-      icon: Eye,
-      onClick: (record) => navigate(`/shopkeepers/${record.id}`),
-    },
-    {
-      label: "Edit profile",
-      icon: Pencil,
-      onClick: (record) => openAction("edit", record, refresh),
-    },
-    {
-      label: "Approve",
-      icon: CheckCircle2,
-      hidden: (record) => !canApprove(record.status),
-      onClick: (record) => openAction("approve", record, refresh),
-    },
-    {
-      label: "Request more info",
-      icon: RotateCcw,
-      hidden: (record) => !canRequestMoreInfo(record.status),
-      onClick: (record) => openAction("requestMoreInfo", record, refresh),
-    },
-    {
-      label: "Suspend",
-      icon: CircleOff,
-      hidden: (record) => !canSuspend(record.status),
-      onClick: (record) => openAction("suspend", record, refresh),
-    },
-    {
-      label: "Reject",
-      icon: CircleX,
-      danger: true,
-      hidden: (record) => !canReject(record.status),
-      onClick: (record) => openAction("reject", record, refresh),
-    },
-    {
-      label: "Block",
-      icon: Ban,
-      danger: true,
-      hidden: (record) => !canBlock(record.status),
-      onClick: (record) => openAction("block", record, refresh),
-    },
-  ];
+  const handleModalSubmit = async (payload) => {
+    if (modal.type === "edit") {
+      await shopkeeperService.update(modal.record.id, payload);
+    } else if (modal.type === "approve") {
+      await shopkeeperService.approve(modal.record.id, payload);
+    } else if (modal.type === "suspend") {
+      await shopkeeperService.suspend(modal.record.id, payload);
+    } else if (modal.type === "reject") {
+      await shopkeeperService.reject(modal.record.id, payload);
+    } else if (modal.type === "block") {
+      await shopkeeperService.block(modal.record.id, payload);
+    }
+    refresh();
+  };
+
+  const modalTitle = {
+    edit: "Edit shopkeeper",
+    approve: "Approve shopkeeper",
+    suspend: "Suspend shopkeeper",
+    reject: "Reject shopkeeper",
+    block: "Block shopkeeper",
+  }[modal.type] ?? "Shopkeeper action";
 
   return (
-    <>
-      <PreviewListPage
-        columns={columns}
-        description="Review, approve, and manage B2B buyer relationships."
+    <div className="page-stack">
+      <PageHeader
         eyebrow="Shopkeepers"
-        hidePrimaryAction
-        mapRows={mapShopkeepers}
-        moduleName="Shopkeeper management"
-        query={query}
-        rowActions={rowActions}
-        rows={shopkeeperRows}
-        service={shopkeeperService}
-        statusOptions={["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "SUSPENDED", "BLOCKED"]}
         title={title}
+        description="Manage and monitor your B2B shopkeeper relationships."
+        actions={
+          <>
+            <Button variant="secondary" size="sm" icon={Download}>
+              Export
+            </Button>
+            <Button size="sm" icon={Plus} onClick={() => navigate("/shopkeepers/new")}>
+              Add Shopkeeper
+            </Button>
+          </>
+        }
       />
+
+      <div className="sk-stats-grid">
+        {statCards.map((s) => (
+          <StatCard key={s.title} {...s} />
+        ))}
+      </div>
+
+      <div className="sk-list-card">
+        <div className="sk-list-card__toolbar">
+          <ShopkeeperToolbar
+            search={search}
+            status={statusFilter}
+            sort={sort}
+            onSearch={setSearch}
+            onStatus={(v) => {
+              setStatusFilter(v);
+              setPage(1);
+            }}
+            onSort={setSort}
+            onRefresh={refresh}
+            hideStatusFilter={!!titleStatus}
+          />
+        </div>
+        <ShopkeeperTable
+          rows={rows}
+          loading={loading}
+          page={page}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPage={setPage}
+          onAction={handleAction}
+        />
+      </div>
+
       <ResourceFormModal
-        description={`Update ${modal.record?.shopName ?? "shopkeeper"} safely with an audited action.`}
-        fields={fields}
         open={modal.open}
+        title={modalTitle}
+        description={`Update ${modal.record?.shopName ?? "shopkeeper"} safely with an audited action.`}
+        fields={modalFields}
         record={modal.type === "edit" ? modal.record : null}
         submitLabel={modal.type === "approve" ? "Approve account" : "Confirm action"}
-        title={
-          modal.type === "edit"
-            ? "Edit shopkeeper"
-            : modal.type === "approve"
-              ? "Approve shopkeeper"
-              : "Shopkeeper status action"
-        }
-        onClose={() => setModal({ open: false, type: null, record: null, refresh: null })}
-        onSubmit={async (payload) => {
-          if (modal.type === "edit") {
-            await shopkeeperService.update(modal.record.id, payload);
-          } else {
-            await shopkeeperService[modal.type](modal.record.id, payload);
-          }
-          modal.refresh?.();
-        }}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
       />
-    </>
+    </div>
   );
 }

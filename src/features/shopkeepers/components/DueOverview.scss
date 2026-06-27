@@ -1,0 +1,121 @@
+@use "../../../styles/breakpoints" as *;
+
+.due-overview {
+  display: inline-flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  border: 1px solid #ece6dc;
+  border-radius: 10px;
+  background: #faf8f4;
+  overflow: hidden;
+  max-width: 100%;
+
+  &__group {
+    display: contents;
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 7px 11px;
+    min-width: 0;
+
+    &--empty {
+      opacity: 0.55;
+    }
+  }
+
+  &__divider {
+    width: 1px;
+    background: #ece6dc;
+    flex: 0 0 auto;
+    align-self: stretch;
+  }
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #9a9590;
+    white-space: nowrap;
+  }
+
+  &__rupee {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  &__value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+
+    &--metal {
+      color: #8a6021;
+    }
+
+    &--cash {
+      color: var(--red);
+    }
+  }
+}
+
+// Tablet: slightly smaller text
+@include respond-to-tablet {
+  .due-overview {
+    &__item {
+      padding: 6px 9px;
+    }
+
+    &__value {
+      font-size: 12px;
+    }
+
+    &__label {
+      font-size: 8px;
+    }
+  }
+}
+
+// Mobile: stack vertically, full width
+@include respond-to-mobile {
+  .due-overview {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border-radius: 8px;
+
+    &__group {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+    }
+
+    &__item {
+      flex: 1;
+      padding: 6px 10px;
+    }
+
+    &__divider {
+      width: 1px;
+      height: auto;
+    }
+
+    // Horizontal rule between groups and cash row
+    &__group + &__item,
+    &__group + &__group {
+      border-top: 1px solid #ece6dc;
+    }
+
+    // Cash Due row separator when there are metal groups above
+    &__group ~ &__item:last-child {
+      border-top: 1px solid #ece6dc;
+    }
+  }
+}

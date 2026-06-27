@@ -88,7 +88,9 @@ function CombinedCalc({ currentDue, advanceBalance, fine, cashAmount, cashRate }
   );
 }
 
-export function AddCollectionModal({ onClose, onSuccess }) {
+// BUG-3: accept optional defaultShopkeeperId / defaultMetalId for pre-selection
+// (used when opened from ExpandedOrderCard collection buttons)
+export function AddCollectionModal({ onClose, onSuccess, defaultShopkeeperId, defaultMetalId }) {
   // ── shop search ──────────────────────────────────────────────────────────────
   const [shopQuery, setShopQuery]       = useState("");
   const [shopResults, setShopResults]   = useState([]);
@@ -114,40 +116,45 @@ export function AddCollectionModal({ onClose, onSuccess }) {
 
   const debounceRef = useRef(null);
 
-  // ── load all shops on mount ──────────────────────────────────────────────────
+  // ── debounced shop search (also handles initial load via empty query) ────────
   useEffect(() => {
-    setShopLoading(true);
-    shopkeeperService
-      .list({ pageSize: 50 })
-      .then((res) => setShopResults(res.data ?? res ?? []))
-      .catch(() => setShopResults([]))
-      .finally(() => setShopLoading(false));
-  }, []);
-
-  // ── debounced shop search ────────────────────────────────────────────────────
-  useEffect(() => {
+    let alive = true;
     clearTimeout(debounceRef.current);
-    if (shopQuery.trim() === "") {
+
+    const fetchShops = (params) => {
       setShopLoading(true);
       shopkeeperService
-        .list({ pageSize: 50 })
-        .then((res) => setShopResults(res.data ?? res ?? []))
-        .catch(() => setShopResults([]))
-        .finally(() => setShopLoading(false));
-      return;
+        .list(params)
+        .then((res) => { if (alive) setShopResults(res.data ?? res ?? []); })
+        .catch(() => { if (alive) setShopResults([]); })
+        .finally(() => { if (alive) setShopLoading(false); });
+    };
+
+    if (shopQuery.trim() === "") {
+      fetchShops({ pageSize: 50 });
+    } else {
+      debounceRef.current = setTimeout(
+        () => fetchShops({ search: shopQuery, pageSize: 50 }),
+        300,
+      );
     }
-    setShopLoading(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await shopkeeperService.list({ search: shopQuery, pageSize: 50 });
-        setShopResults(res.data ?? res ?? []);
-      } catch {
-        setShopResults([]);
-      } finally {
-        setShopLoading(false);
-      }
-    }, 300);
+
+    return () => {
+      alive = false;
+      clearTimeout(debounceRef.current);
+    };
   }, [shopQuery]);
+
+  // BUG-3: if a default shopkeeper ID is provided, load that shop's data on mount
+  useEffect(() => {
+    if (!defaultShopkeeperId || selectedShop) return;
+    shopkeeperService
+      .getById?.(defaultShopkeeperId)
+      .then((shop) => { if (shop) setSelectedShop(shop); })
+      .catch(() => {});
+  // Run only once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── load metals + last payment when shop is selected ─────────────────────────
   useEffect(() => {
@@ -165,7 +172,12 @@ export function AddCollectionModal({ onClose, onSuccess }) {
       .then(([metalsRes, ordersRes]) => {
         const list = metalsRes.data ?? metalsRes ?? [];
         setMetals(list);
-        if (list.length > 0) setSelectedMetalId(String(list[0].metal.id));
+        // BUG-3: prefer the defaultMetalId if provided, otherwise first metal
+        const preselect = defaultMetalId
+          ? list.find((r) => String(r.metal.id) === String(defaultMetalId))
+          : null;
+        const initial = preselect ?? list[0];
+        if (initial) setSelectedMetalId(String(initial.metal.id));
 
         const recentOrders = ordersRes.data ?? [];
         const lastOrder    = recentOrders[0] ?? null;
@@ -183,7 +195,7 @@ export function AddCollectionModal({ onClose, onSuccess }) {
       })
       .catch(() => { setMetals([]); setLastPayment(null); })
       .finally(() => setMetalsLoading(false));
-  }, [selectedShop]);
+  }, [selectedShop]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateGram = useCallback((key, val) => {
     setGramForm((f) => ({ ...f, [key]: val }));
@@ -221,37 +233,31 @@ export function AddCollectionModal({ onClose, onSuccess }) {
     return fine > 0 || cashFine > 0;
   }, [selectedShop, selectedMetalId, fine, cashFine]);
 
-  // ── submit: call whichever APIs have values ──────────────────────────────────
+  // BUG-4: submit sequentially (not Promise.all) to prevent concurrent FIFO settlement rebuilds
+  // on the same (shopkeeper, metal) account, which could produce corrupt allocations.
   const submit = async () => {
     setError("");
     setSubmitting(true);
     try {
-      const calls = [];
-
       if (fine > 0) {
-        calls.push(
-          khatabookService.createGoldCollection({
-            shopkeeperId:     Number(selectedShop.id),
-            metalId:          Number(selectedMetalId),
-            receivedQuantity: fine,
-            notes:            notes.trim() || undefined,
-          }),
-        );
+        await khatabookService.createMetalCollection({
+          shopkeeperId:     Number(selectedShop.id),
+          metalId:          Number(selectedMetalId),
+          receivedQuantity: fine,
+          notes:            notes.trim() || undefined,
+        });
       }
 
       if (cashFine > 0) {
-        calls.push(
-          khatabookService.createCashCollection({
-            shopkeeperId: Number(selectedShop.id),
-            metalId:      Number(selectedMetalId),
-            cashAmount:   toNumber(cashForm.cashAmount),
-            metalRate:    cashRate,
-            notes:        notes.trim() || undefined,
-          }),
-        );
+        await khatabookService.createCashCollection({
+          shopkeeperId: Number(selectedShop.id),
+          metalId:      Number(selectedMetalId),
+          cashAmount:   toNumber(cashForm.cashAmount),
+          metalRate:    cashRate,
+          notes:        notes.trim() || undefined,
+        });
       }
 
-      await Promise.all(calls);
       onSuccess?.();
       onClose();
     } catch (err) {

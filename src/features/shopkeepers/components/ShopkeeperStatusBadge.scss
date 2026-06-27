@@ -1,0 +1,11 @@
+.sk-status-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  &__since {
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+}

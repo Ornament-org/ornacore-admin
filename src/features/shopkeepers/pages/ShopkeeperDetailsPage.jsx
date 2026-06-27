@@ -7,6 +7,7 @@ import { metalService, shopkeeperService } from "../../../services/resourceServi
 import { KhatabookPage } from "../../khatabook/pages/KhatabookPage.jsx";
 import { MetalCreditLimitEditor } from "../components/MetalCreditLimitEditor.jsx";
 import { ShopOverview } from "../components/overview/ShopOverview.jsx";
+import { MetalSummaryCards } from "../components/shopkeeper-details/MetalSummaryCards.jsx";
 import { ShopkeeperHeaderCard } from "../components/shopkeeper-details/ShopkeeperHeaderCard.jsx";
 import "../components/shopkeeper-details/ShopkeeperDetails.scss";
 
@@ -109,6 +110,17 @@ export function ShopkeeperDetailsPage() {
     return <div className="shopkeeper-details__state">No shopkeeper found.</div>;
   }
 
+  const ms = state.details?.metalSummary;
+  const summary = {
+    primaryMetal:   ms?.primaryMetal,
+    totalDue:       ms?.totalDue,
+    totalDelivered: ms?.totalDelivered,
+    totalReceived:  ms?.totalReceived,
+    availableCredit: state.analytics?.metalSummary?.creditRemaining,
+  };
+  const metalName = ms?.primaryMetal?.name ?? "Metal";
+  const ledgerSummary = state.ledgerSummary;
+
   return (
     <div className="shopkeeper-details">
 
@@ -117,6 +129,8 @@ export function ShopkeeperDetailsPage() {
         onEdit={() => setModal({ open: true, type: "edit" })}
         onEditLimits={() => setModal({ open: true, type: "limits" })}
       />
+
+      <MetalSummaryCards summary={summary} />
 
       <div className="shopkeeper-details__tabs" role="tablist" aria-label="Shopkeeper sections">
         {tabs.map((tab) => (
@@ -134,11 +148,10 @@ export function ShopkeeperDetailsPage() {
       {activeTab === "Overview" && (
         <ShopOverview
           shopkeeperId={id}
-          analytics={state.analytics}
-          details={state.details}
-          ledgerSummary={state.ledgerSummary}
+          ledgerSummary={ledgerSummary}
           ordersSummary={state.ordersSummary}
           recentActivity={state.recentActivity}
+          metalName={metalName}
         />
       )}
 

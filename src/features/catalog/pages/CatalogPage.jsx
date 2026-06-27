@@ -10,12 +10,7 @@ import { CategoryFormModal } from "../components/CategoryFormModal.jsx";
 import { CategoryTreeView } from "../components/CategoryTreeView.jsx";
 import "../Catalog.scss";
 
-const catalogRows = [
-  { id: "CAT-01", name: "Gold", parent: "Metal", products: 842, order: 1, status: "ACTIVE" },
-  { id: "CAT-02", name: "Silver", parent: "Metal", products: 265, order: 2, status: "ACTIVE" },
-  { id: "CAT-03", name: "Diamond", parent: "Metal", products: 124, order: 3, status: "ACTIVE" },
-  { id: "CAT-04", name: "Platinum", parent: "Metal", products: 17, order: 4, status: "ACTIVE" },
-];
+const catalogRows = [];
 
 const mapCatalogRows = (rows) =>
   rows.map((row) => ({

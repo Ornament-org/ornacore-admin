@@ -1,20 +1,12 @@
 export const CATEGORY_METAL_SESSION_KEY = "selectedCategoryMetalId";
 const LEGACY_CATEGORY_METAL_SESSION_KEY = "selectedMetalId";
 
-const preferredGoldCodes = new Set(["G", "GLD", "GOLD"]);
-
 export const getActiveMetalOptions = (metals = []) =>
   metals.filter((metal) => metal.isActive !== false);
 
 export const findDefaultMetalId = (metals = []) => {
   const activeMetals = getActiveMetalOptions(metals);
-  const goldMetal = activeMetals.find(
-    (metal) =>
-      preferredGoldCodes.has(String(metal.code ?? "").trim().toUpperCase()) ||
-      String(metal.name ?? "").trim().toLowerCase() === "gold",
-  );
-
-  return goldMetal?.id ? String(goldMetal.id) : activeMetals[0]?.id ? String(activeMetals[0].id) : "";
+  return activeMetals[0]?.id ? String(activeMetals[0].id) : "";
 };
 
 export const getPersistedMetalId = (metals = []) => {

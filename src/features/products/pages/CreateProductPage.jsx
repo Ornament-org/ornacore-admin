@@ -28,7 +28,7 @@ import {
   metalService,
   productService,
 } from "../../../services/resourceServices.js";
-import { calculateGoldPurityFromTunch } from "../../../utils/goldPurity.js";
+import { calculateMetalPurityFromTunch } from "../../../utils/goldPurity.js";
 import "../Products.scss";
 
 const steps = [
@@ -42,8 +42,6 @@ const MAX_PRODUCT_IMAGES = 10;
 const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CATEGORY_SCOPE_METAL = "metal";
 const CATEGORY_SCOPE_ALL = "all";
-
-const preferredGoldCodes = new Set(["G", "GLD", "GOLD"]);
 
 const blankProduct = {
   name: "",
@@ -94,13 +92,7 @@ function flattenCategoryTree(categories, depth = 0) {
 
 function findDefaultMetalId(metals = []) {
   const activeMetals = metals.filter((metal) => metal.isActive !== false);
-  const goldMetal = activeMetals.find(
-    (metal) =>
-      preferredGoldCodes.has(String(metal.code ?? "").trim().toUpperCase()) ||
-      String(metal.name ?? "").trim().toLowerCase() === "gold",
-  );
-
-  return goldMetal?.id ? String(goldMetal.id) : activeMetals[0]?.id ? String(activeMetals[0].id) : "";
+  return activeMetals[0]?.id ? String(activeMetals[0].id) : "";
 }
 
 function CategoryMultiSelect({
@@ -482,7 +474,7 @@ export function CreateProductPage() {
 
   const setTunch = (event) => {
     const tunch = event.target.value;
-    const calculated = calculateGoldPurityFromTunch(tunch);
+    const calculated = calculateMetalPurityFromTunch(tunch);
     setForm((current) => ({
       ...current,
       tunch,

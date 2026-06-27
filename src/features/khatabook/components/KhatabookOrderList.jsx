@@ -1,6 +1,14 @@
 import { KhatabookOrderRow } from "./KhatabookOrderRow.jsx";
 
-export function KhatabookOrderList({ orders = [], expandedOrderId, onToggleOrder, onViewLedger }) {
+// BUG-3: accept and forward collection handlers
+export function KhatabookOrderList({
+  orders = [],
+  expandedOrderId,
+  onToggleOrder,
+  onViewLedger,
+  onAddMetalCollection,
+  onAddCashCollection,
+}) {
   if (!orders.length) {
     return <div className="khatabook-empty">No khatabook orders found for this selection.</div>;
   }
@@ -14,6 +22,8 @@ export function KhatabookOrderList({ orders = [], expandedOrderId, onToggleOrder
           order={order}
           onToggle={() => onToggleOrder(order.id)}
           onViewLedger={onViewLedger}
+          onAddMetalCollection={onAddMetalCollection}
+          onAddCashCollection={onAddCashCollection}
         />
       ))}
     </div>

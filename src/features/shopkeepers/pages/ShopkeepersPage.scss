@@ -1,50 +1,57 @@
 @use "../../../styles/breakpoints" as *;
 
-// Styles owned by ShopkeepersPage
-
-.shopkeepers-page {
-  min-height: calc(100vh - 150px); // Subtract topbar height
-  display: flex;
-  flex-direction: column;
+.sk-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
 
-.shopkeepers-page__content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; // Important for nested flex scrolling
-}
-
-.shopkeepers-page__table-wrapper {
-  flex: 1;
-  min-height: 0;
+.sk-list-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+
+  &__toolbar {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-soft);
+  }
 }
 
-.shopkeepers-page__table {
-  flex: 1;
-  overflow: auto;
-  min-height: 0;
-}
-
-.list-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-
-@include respond-to-mobile {
-  .shopkeepers-page {
-    min-height: calc(100vh - 60px); // Adjust for mobile topbar
+@include respond-to-desktop-sm {
+  .sk-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @include respond-to-tablet {
-  .shopkeepers-page {
-    min-height: calc(100vh - 66px);
+  .sk-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .sk-list-card {
+    border-radius: 12px;
+
+    &__toolbar {
+      padding: 13px 16px;
+    }
+  }
+}
+
+@include respond-to-mobile {
+  .sk-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .sk-list-card {
+    border-radius: 10px;
+
+    &__toolbar {
+      padding: 12px 14px;
+    }
   }
 }

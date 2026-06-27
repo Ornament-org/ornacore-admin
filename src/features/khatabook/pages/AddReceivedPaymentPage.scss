@@ -157,29 +157,29 @@
 }
 
 // Gold Collection Form
-.gold-collection-form {
+.metal-collection-form {
   padding: 18px;
 }
 
-.gold-collection-form h3 {
+.metal-collection-form h3 {
   margin: 0 0 14px;
   font-size: 16px;
 }
 
-.gold-collection-form label {
+.metal-collection-form label {
   display: grid;
   gap: 7px;
   margin-bottom: 14px;
 }
 
-.gold-collection-form label span {
+.metal-collection-form label span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
 
-.gold-collection-form input,
-.gold-collection-form textarea {
+.metal-collection-form input,
+.metal-collection-form textarea {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -188,23 +188,23 @@
   color: var(--text);
 }
 
-.gold-collection-form input {
+.metal-collection-form input {
   height: 42px;
 }
 
-.gold-collection-form textarea {
+.metal-collection-form textarea {
   min-height: 76px;
   padding-top: 11px;
   resize: vertical;
 }
 
-.gold-collection-form small {
+.metal-collection-form small {
   text-align: right;
   color: var(--muted);
   font-size: 12px;
 }
 
-.gold-collection-form__preview {
+.metal-collection-form__preview {
   padding: 12px;
   border: 1px solid rgba(6, 118, 71, 0.24);
   border-radius: 8px;

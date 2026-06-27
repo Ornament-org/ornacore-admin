@@ -12,8 +12,11 @@ export function GramCollectionForm({ form, onChange, metalTunch }) {
   return (
     <>
       <div className="collection-modal__field">
+        {/* BUG-12 fix: metal model has no tunch field, so metalTunch defaults to 100
+            and calcFine returns the input unchanged. The backend receives this value as
+            fine weight directly — label and placeholder must say "Fine Weight". */}
         <label className="collection-modal__label">
-          Weight (Gram) <span>*</span>
+          Fine Weight (gm) <span>*</span>
         </label>
         <div className="collection-modal__input-wrap">
           <input
@@ -21,7 +24,7 @@ export function GramCollectionForm({ form, onChange, metalTunch }) {
             min="0"
             step="0.001"
             className="collection-modal__input"
-            placeholder="Enter gross weight"
+            placeholder="Enter fine weight"
             value={form.weight}
             onChange={(e) => onChange("weight", e.target.value)}
           />

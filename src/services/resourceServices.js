@@ -167,7 +167,7 @@ export const khatabookService = {
     });
     return data;
   },
-  createGoldCollection: (payload) =>
+  createMetalCollection: (payload) =>
     apiClient.post("/admin/khatabook/collections/metal", payload),
   createCashCollection: (payload) =>
     apiClient.post("/admin/khatabook/collections/cash", payload),

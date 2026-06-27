@@ -1,6 +1,6 @@
 import { CalendarDays, Download, Sparkles, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Badge } from "../../../components/common/Badge.jsx";
 import { Button } from "../../../components/common/Button.jsx";
 import { FormAlert } from "../../../components/common/FormAlert.jsx";
@@ -10,7 +10,7 @@ import { env } from "../../../config/env.js";
 import { dashboardService } from "../../../services/resourceServices.js";
 import { apiErrorMessage } from "../../../services/apiClient.js";
 import { formatCurrency } from "../../../utils/formatters.js";
-import { AddCollectionModal } from "../../khatabook/collections/addCollection/AddCollectionModal.jsx";
+import { openAddCollectionModal } from "../../khatabook/store/khatabookSlice.js";
 import { DueOverview } from "../components/DueOverview.jsx";
 import { LowStockAlerts } from "../components/LowStockAlerts.jsx";
 import { MetricCard } from "../components/MetricCard.jsx";
@@ -21,11 +21,11 @@ import { TopCategories } from "../components/TopCategories.jsx";
 import "../Dashboard.scss";
 
 export function DashboardPage() {
+  const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
   const name = user?.roles?.includes("SUPER_ADMIN") ? "Super Admin" : "Administrator";
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState(null);
-  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
 
   useEffect(() => {
     if (env.enableDemoData) return;
@@ -82,12 +82,6 @@ export function DashboardPage() {
 
   return (
     <>
-    {collectionModalOpen && (
-      <AddCollectionModal
-        onClose={() => setCollectionModalOpen(false)}
-        onSuccess={() => setCollectionModalOpen(false)}
-      />
-    )}
     <div className="page-stack">
       <PageHeader
         eyebrow="Overview"
@@ -109,7 +103,7 @@ export function DashboardPage() {
             <Button variant="secondary" icon={Download}>
               Export
             </Button>
-            <Button icon={Wallet} onClick={() => setCollectionModalOpen(true)}>
+            <Button icon={Wallet} onClick={() => dispatch(openAddCollectionModal())}>
               Add Collection
             </Button>
           </>

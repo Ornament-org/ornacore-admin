@@ -1,6 +1,6 @@
 const roundedKarat = (value) => Number((value * 24 * 0.01).toFixed(2));
 
-export const calculateGoldPurityFromTunch = (value) => {
+export const calculateMetalPurityFromTunch = (value) => {
   if (value === "" || value === null || value === undefined) {
     return { karat: "", purity: "" };
   }

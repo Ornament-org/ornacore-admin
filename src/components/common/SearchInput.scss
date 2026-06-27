@@ -1,0 +1,67 @@
+@use "../../styles/breakpoints" as *;
+
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  min-width: 280px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+
+  &:focus-within {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201, 141, 47, 0.08);
+  }
+
+  &__icon {
+    flex: 0 0 auto;
+    color: var(--muted);
+  }
+
+  &__field {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    font-size: 12px;
+    color: var(--ink);
+
+    &::placeholder {
+      color: var(--muted);
+    }
+  }
+
+  &__clear {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--line);
+    color: var(--muted);
+    cursor: pointer;
+    transition: 150ms ease;
+
+    &:hover {
+      background: var(--line-strong);
+      color: var(--ink);
+    }
+  }
+}
+
+@include respond-to-tablet {
+  .search-input {
+    min-width: 0;
+    flex: 1;
+  }
+}

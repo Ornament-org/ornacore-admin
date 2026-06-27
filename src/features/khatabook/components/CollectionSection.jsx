@@ -1,8 +1,8 @@
 import { formatMoney, formatQuantity } from "./khatabookFormatters.js";
 
 export function CollectionSection({ order }) {
-  const metalCollections = order.collections.filter((row) => row.collectionType === "METAL");
-  const cashCollections = order.collections.filter((row) => row.collectionType === "CASH");
+  const metalCollections = (order.collections ?? []).filter((row) => row.collectionType === "METAL");
+  const cashCollections = (order.collections ?? []).filter((row) => row.collectionType === "CASH");
   const metalReceived = metalCollections.reduce((sum, row) => sum + Number(row.receivedQuantity ?? 0), 0);
   const cashReceived = cashCollections.reduce((sum, row) => sum + Number(row.cashAmount ?? 0), 0);
   const cashFine = cashCollections.reduce((sum, row) => sum + Number(row.fineCredit ?? 0), 0);

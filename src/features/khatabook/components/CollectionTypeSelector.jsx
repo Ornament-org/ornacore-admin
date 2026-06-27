@@ -1,6 +1,6 @@
 import { Card } from "../../../components/common/Card.jsx";
 
-export function CollectionTypeSelector({ collectionType, onChange }) {
+export function CollectionTypeSelector({ collectionType, onChange, metalName = "Metal" }) {
   return (
     <Card className="collection-type-selector">
       <h3>Select Collection Type</h3>
@@ -14,8 +14,8 @@ export function CollectionTypeSelector({ collectionType, onChange }) {
             onChange={() => onChange("metal")}
           />
           <div>
-            <strong>Gold Received</strong>
-            <small>Add gold directly</small>
+            <strong>{metalName} Received</strong>
+            <small>Add {metalName.toLowerCase()} directly</small>
           </div>
         </label>
         <label className={collectionType === "cash" ? "is-selected" : ""}>
@@ -28,7 +28,7 @@ export function CollectionTypeSelector({ collectionType, onChange }) {
           />
           <div>
             <strong>Cash Received</strong>
-            <small>Add cash & convert to gold</small>
+            <small>Add cash & convert to {metalName.toLowerCase()}</small>
           </div>
         </label>
       </div>

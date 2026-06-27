@@ -3,9 +3,9 @@ import {
   CalendarDays,
   ChevronDown,
   Coins,
+  Cuboid,
   Gem,
   IndianRupee,
-  MinusCircle,
   Plus,
   Save,
   Trash2,
@@ -15,7 +15,6 @@ import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "../../auth/permissions.js";
 import { khatabookService } from "../../../services/resourceServices.js";
 import { formatMoney, formatQuantity } from "./khatabookFormatters.js";
-
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const emptyItem = (tunch = "") => ({ itemName: "", grossWeight: "", tunch });
@@ -38,34 +37,6 @@ const cashToFine = (cash, rate) => {
 
 const errorDetails = (err) => err.response?.data?.error?.details ?? null;
 
-// ── Collection type pill selector ─────────────────────────────────────────────
-
-const COLLECTION_TYPES = [
-  { value: "none", label: "No Collection", icon: MinusCircle },
-  { value: "metal", label: "Metal",        icon: Gem          },
-  { value: "cash",  label: "Cash",          icon: IndianRupee  },
-];
-
-function CollectionTypePills({ value, onChange }) {
-  return (
-    <div className="khatabook-coll-pills">
-      {COLLECTION_TYPES.map(({ value: v, label, icon: Icon }) => (
-        <button
-          key={v}
-          type="button"
-          className={
-            "khatabook-coll-pill" + (value === v ? " is-active" : "")
-          }
-          onClick={() => onChange(v)}
-        >
-          <Icon size={14} />
-          {label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function CreateKhatabookOrder({
@@ -86,10 +57,10 @@ export function CreateKhatabookOrder({
     notes: "",
     overrideCreditLimit: false,
     collection: {
-      type: "none",      // "none" | "metal" | "cash"
-      metalReceived: "",  // gm fine weight (metal type)
-      cashReceived: "",   // ₹ (cash type)
-      metalRate: "",      // ₹ per 10 gm — used to convert cash → fine
+      metalReceived: "",  // gm fine weight
+      cashReceived: "",   // ₹
+      metalRate: "",      // ₹ per 10 gm - falls back to current rate
+      notes: "",
     },
   });
 
@@ -110,6 +81,8 @@ export function CreateKhatabookOrder({
   );
 
   const metalName = selectedSummary?.metal?.name ?? "Metal";
+  const currentRate = selectedSummary?.currentRate ?? selectedSummary?.metal?.currentRate ?? "";
+  const collectionRate = toNumber(form.collection.metalRate) || toNumber(currentRate);
 
   const validItems = useMemo(
     () =>
@@ -126,12 +99,13 @@ export function CreateKhatabookOrder({
 
   // derived fine credit shown in the collection panel
   const localCashFine = useMemo(
-    () => cashToFine(form.collection.cashReceived, form.collection.metalRate),
-    [form.collection.cashReceived, form.collection.metalRate],
+    () => cashToFine(form.collection.cashReceived, collectionRate),
+    [form.collection.cashReceived, collectionRate],
   );
 
   const payload = useMemo(() => {
-    const { type, metalReceived, cashReceived, metalRate } = form.collection;
+    const { metalReceived, cashReceived, notes } = form.collection;
+    const cashAmount = toNumber(cashReceived);
     return {
       shopkeeperId: Number(shopkeeperId),
       metalId: Number(form.metalId),
@@ -144,13 +118,14 @@ export function CreateKhatabookOrder({
         tunch: Number(it.tunch),
       })),
       collection: {
-        metalReceived: type === "metal" ? toNumber(metalReceived) : 0,
-        cashReceived:  type === "cash"  ? toNumber(cashReceived)  : 0,
+        metalReceived: toNumber(metalReceived),
+        cashReceived: cashAmount,
         metalRate:
-          type === "cash" && metalRate ? Number(metalRate) : undefined,
+          cashAmount > 0 && collectionRate > 0 ? collectionRate : undefined,
+        notes: notes.trim() || undefined,
       },
     };
-  }, [form, shopkeeperId, validItems]);
+  }, [collectionRate, form, shopkeeperId, validItems]);
 
   // live preview (debounced 250 ms)
   useEffect(() => {
@@ -165,8 +140,8 @@ export function CreateKhatabookOrder({
         .previewOrder(payload)
         .then((res) => {
           if (!alive) return;
-          setPreview(res.data);
-          setCreditError(res.data?.creditLimitExceeded ? res.data : null);
+          setPreview(res);
+          setCreditError(res?.creditLimitExceeded ? res : null);
         })
         .catch(() => { if (alive) setPreview(null); });
     }, 250);
@@ -187,16 +162,20 @@ export function CreateKhatabookOrder({
     setError("");
   };
 
-  const setCollType = (type) => {
-    setForm((f) => ({
-      ...f,
-      collection: { ...f.collection, type, metalReceived: "", cashReceived: "" },
-    }));
-  };
-
   const setDefaultTunch = (val) => {
+    // BUG-11 fix: capture the current default before updating so we can detect
+    // items that were still at the old default (not manually overridden by the user).
+    // Previously `it.tunch || val` short-circuited on any truthy tunch value, so
+    // changing the default never propagated to items already showing "52" (or any
+    // other truthy string).
+    const oldDefault = form.defaultTunch;
     setForm((f) => ({ ...f, defaultTunch: val }));
-    setItems((its) => its.map((it) => ({ ...it, tunch: it.tunch || val })));
+    setItems((its) =>
+      its.map((it) => ({
+        ...it,
+        tunch: it.tunch === oldDefault || !it.tunch ? val : it.tunch,
+      })),
+    );
   };
 
   const updateItem = (idx, key, val) => {
@@ -241,9 +220,19 @@ export function CreateKhatabookOrder({
   const attemptedDue         = preview?.attemptedDue          ?? q(Math.max(0, Number(totalBeforeColl) - Number(collectionCredit)));
   const exceededBy           = preview?.exceededBy            ?? q(Math.max(0, Number(attemptedDue) - Number(creditLimit)));
   const limitCrossed         = Number(exceededBy) > 0;
-  const saveDisabled         = saving || !form.metalId || validItems.length === 0 || (limitCrossed && !form.overrideCreditLimit);
-
-  const collType = form.collection.type;
+  const metalCreditLocal     = q(form.collection.metalReceived);
+  const hasMetalCollection   = toNumber(form.collection.metalReceived) > 0;
+  const hasCashCollection    = toNumber(form.collection.cashReceived) > 0;
+  const collectionRateMissing = hasCashCollection && collectionRate <= 0;
+  const saveDisabled         =
+    saving ||
+    !form.metalId ||
+    validItems.length === 0 ||
+    collectionRateMissing ||
+    (limitCrossed && !form.overrideCreditLimit);
+  const collectionStatusText = hasMetalCollection || hasCashCollection
+    ? "Collection will be settled FIFO against outstanding dues."
+    : "Leave both fields empty when nothing is collected at delivery.";
 
   // ── render ───────────────────────────────────────────────────────────────────
 
@@ -285,7 +274,7 @@ export function CreateKhatabookOrder({
         <label>
           <span>Metal</span>
           <div className="khatabook-create__metal-select">
-            <b>{selectedSummary?.metal?.code?.slice(0, 2) ?? "Au"}</b>
+            <b><Cuboid /></b>
             <select
               value={form.metalId}
               onChange={(e) => setField("metalId", e.target.value)}
@@ -436,16 +425,19 @@ export function CreateKhatabookOrder({
 
         {/* Collection panel */}
         <section className="khatabook-create__panel">
-          <h3>Collection at Delivery <small>(Optional)</small></h3>
+          <div className="khatabook-create__panel-head">
+            <h3>Collection at Delivery <small>(Optional)</small></h3>
+            <span>{metalName}</span>
+          </div>
 
-          {/* Type selector pills */}
-          <CollectionTypePills value={collType} onChange={setCollType} />
-
-          {/* Metal fields */}
-          {collType === "metal" && (
-            <div className="khatabook-coll-fields">
+          <div className="khatabook-coll-combined">
+            <div className="khatabook-coll-card">
+              <div className="khatabook-coll-card__title">
+                <Gem size={14} />
+                <span>Metal</span>
+              </div>
               <label>
-                <span><Gem size={12} /> {metalName} Fine Weight Received (gm)</span>
+                <span>{metalName} Fine Weight Received (gm)</span>
                 <input
                   type="number" min="0" step="0.001"
                   placeholder="0.000"
@@ -453,21 +445,19 @@ export function CreateKhatabookOrder({
                   onChange={(e) => setCollField("metalReceived", e.target.value)}
                 />
               </label>
-              {toNumber(form.collection.metalReceived) > 0 && (
-                <div className="khatabook-coll-result">
-                  <Gem size={13} />
-                  <span>{metalName} credit applied</span>
-                  <strong>{formatQuantity(form.collection.metalReceived)}</strong>
-                </div>
-              )}
+              <div className="khatabook-coll-result">
+                <span>Metal credit</span>
+                <strong>{formatQuantity(metalCreditLocal)}</strong>
+              </div>
             </div>
-          )}
 
-          {/* Cash fields */}
-          {collType === "cash" && (
-            <div className="khatabook-coll-fields">
+            <div className="khatabook-coll-card">
+              <div className="khatabook-coll-card__title">
+                <IndianRupee size={14} />
+                <span>Cash</span>
+              </div>
               <label>
-                <span><IndianRupee size={12} /> Cash Received (₹)</span>
+                <span>Cash Received</span>
                 <input
                   type="number" min="0"
                   placeholder="0"
@@ -476,36 +466,42 @@ export function CreateKhatabookOrder({
                 />
               </label>
               <label>
-                <span><Coins size={12} /> {metalName} Rate (₹ per 10 gm)</span>
+                <span><Coins size={12} /> Rate (₹ per 10 gm)</span>
                 <input
                   type="number" min="0"
-                  placeholder="e.g. 9500"
+                  placeholder={currentRate ? String(currentRate) : "Enter rate"}
                   value={form.collection.metalRate}
                   onChange={(e) => setCollField("metalRate", e.target.value)}
                 />
               </label>
-              {toNumber(form.collection.cashReceived) > 0 && (
-                <div className="khatabook-coll-result">
-                  <IndianRupee size={13} />
-                  <span>{formatMoney(toNumber(form.collection.cashReceived))} →</span>
-                  <strong>
-                    {toNumber(form.collection.metalRate) > 0
-                      ? `${formatQuantity(localCashFine)} fine`
-                      : "Enter rate to calculate"}
-                  </strong>
-                </div>
-              )}
+              <div className="khatabook-coll-result">
+                <span>
+                  {hasCashCollection
+                    ? `${formatMoney(toNumber(form.collection.cashReceived))} converts to`
+                    : "Cash credit"}
+                </span>
+                <strong>
+                  {hasCashCollection && !collectionRate
+                    ? "Rate needed"
+                    : formatQuantity(localCashFine)}
+                </strong>
+              </div>
             </div>
-          )}
+          </div>
 
-          {/* None state hint */}
-          {collType === "none" && (
-            <div className="khatabook-coll-hint">
-              No collection recorded at delivery. You can add collections later from the order.
-            </div>
-          )}
+          <label className="khatabook-coll-note">
+            <span>Collection Note (optional)</span>
+            <textarea
+              placeholder="Add a note for this collection..."
+              value={form.collection.notes}
+              onChange={(e) => setCollField("notes", e.target.value)}
+            />
+          </label>
 
-          {/* Total credit bar */}
+          <div className="khatabook-coll-hint">
+            {collectionStatusText}
+          </div>
+
           <div className="khatabook-create__credit-total">
             <span>Total Credit (in fine gm)</span>
             <strong>{formatQuantity(collectionCredit)}</strong>
