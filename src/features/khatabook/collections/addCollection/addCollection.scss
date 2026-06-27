@@ -952,6 +952,51 @@
 }
 
 /* =====================================================
+   QUICK COLLECTION (pre-locked shopkeeper)
+===================================================== */
+
+.quick-collection__shop-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #f9f5ef;
+  border-bottom: 1px solid #ece7de;
+  font-size: 13px;
+  color: #374151;
+
+  svg { color: #c58a2a; flex-shrink: 0; }
+}
+
+.quick-collection__shop-name {
+  font-weight: 700;
+  color: #111827;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-collection__shop-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c58a2a;
+  background: rgba(197, 138, 42, 0.1);
+  border: 1px solid rgba(197, 138, 42, 0.2);
+  border-radius: 100px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.quick-collection__loading {
+  padding: 20px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* =====================================================
    MOBILE
 ===================================================== */
 

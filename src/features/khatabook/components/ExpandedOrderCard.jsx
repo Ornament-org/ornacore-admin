@@ -18,9 +18,9 @@ export function ExpandedOrderCard({ order, onViewLedger, onAddMetalCollection, o
     <div className="order-invoice">
 
       {/* ── ITEMS DELIVERED ─────────────────────────────────────────────── */}
-      <section className="order-invoice__section">
+      <section className="order-invoice__section order-invoice__section--items">
         <header className="order-invoice__section-label">Items Delivered</header>
-        <table className="order-invoice__table">
+        <table className="order-invoice__table order-invoice__table--items">
           <thead>
             <tr>
               <th>Item Name</th>
@@ -32,10 +32,10 @@ export function ExpandedOrderCard({ order, onViewLedger, onAddMetalCollection, o
           <tbody>
             {(order.items ?? []).map((item) => (
               <tr key={item.id}>
-                <td>{item.itemName}</td>
-                <td>{formatQuantity(item.grossWeight)}</td>
-                <td>{Number(item.tunch).toLocaleString("en-IN")}</td>
-                <td>{formatQuantity(item.fineWeight)}</td>
+                <td data-label="Item Name">{item.itemName}</td>
+                <td data-label="Gross Wt">{formatQuantity(item.grossWeight)}</td>
+                <td data-label="Tunch">{Number(item.tunch).toLocaleString("en-IN")}</td>
+                <td data-label="Fine Wt">{formatQuantity(item.fineWeight)}</td>
               </tr>
             ))}
           </tbody>
@@ -122,11 +122,11 @@ export function ExpandedOrderCard({ order, onViewLedger, onAddMetalCollection, o
                   const receivedCell = isCash
                     ? `${formatMoney(row.cashAmount)} @ ${formatMoney(row.metalRate)}/10gm`
                     : row.receivedQuantity != null
-                      ? `${formatQuantity(row.receivedQuantity)} gm fine`
+                      ? `${formatQuantity(row.receivedQuantity)} fine`
                       : "—";
                   const appliedCell = isCash
-                    ? `${formatMoney(row.appliedCash)} ≈ ${formatQuantity(row.appliedFine)} gm`
-                    : `${formatQuantity(row.appliedFine)} gm fine`;
+                    ? `${formatMoney(row.appliedCash)} ≈ ${formatQuantity(row.appliedFine)}`
+                    : `${formatQuantity(row.appliedFine)} fine`;
 
                   return (
                     <tr key={row.id}>
@@ -146,8 +146,7 @@ export function ExpandedOrderCard({ order, onViewLedger, onAddMetalCollection, o
       )}
 
       {/* ── FOOTER ACTIONS ──────────────────────────────────────────────── */}
-      <div className="order-invoice__footer">
-        {/* BUG-3: buttons now call the handlers passed from the parent */}
+      {/* <div className="order-invoice__footer">
         <button
           type="button"
           className="order-invoice__btn"
@@ -168,7 +167,7 @@ export function ExpandedOrderCard({ order, onViewLedger, onAddMetalCollection, o
           <ReceiptText size={15} />
           View Full Ledger
         </button>
-      </div>
+      </div> */}
 
     </div>
   );

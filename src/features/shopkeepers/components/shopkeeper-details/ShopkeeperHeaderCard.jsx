@@ -1,5 +1,4 @@
-import { Mail, MapPin, MoreVertical, Pencil, Phone } from "lucide-react";
-import { Button } from "../../../../components/common/Button.jsx";
+import { Mail, MapPin, Pencil, Phone } from "lucide-react";
 import { StatusBadge } from "../../../../components/common/StatusBadge.jsx";
 
 function initials(name = "") {
@@ -12,8 +11,8 @@ function initials(name = "") {
 }
 
 export function ShopkeeperHeaderCard({ details, onEdit, onEditLimits }) {
-  const shop    = details?.shop ?? {};
-  const owner   = details?.owner ?? {};
+  const shop = details?.shop ?? {};
+  const owner = details?.owner ?? {};
   const address = details?.address ?? {};
 
   const memberSince = details?.memberSince
@@ -60,14 +59,15 @@ export function ShopkeeperHeaderCard({ details, onEdit, onEditLimits }) {
         </div>
       </div>
 
-      <div className="sd-header__actions">
-        <Button variant="secondary" icon={Pencil} onClick={onEdit}>
-          Edit
-        </Button>
-        <Button variant="secondary" icon={MoreVertical} onClick={onEditLimits}>
-          Metal Limits
-        </Button>
-      </div>
+      <button
+        type="button"
+        className="sd-header__edit-btn"
+        onClick={onEdit}
+        aria-label="Edit shopkeeper"
+        title="Edit"
+      >
+        <Pencil size={15} />
+      </button>
     </div>
   );
 }

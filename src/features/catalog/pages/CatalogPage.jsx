@@ -141,7 +141,22 @@ export function CatalogPage({ title = "Metals" }) {
       { name: "isActive", label: "Active", type: "checkbox", defaultValue: true },
     ];
     if (title === "Metals") {
-      return [{ name: "code", label: "Code", required: true }, ...common];
+      return [
+        { name: "code", label: "Code", required: true },
+        ...common,
+        {
+          name: "rateUnit",
+          label: "Rate unit",
+          type: "select",
+          required: true,
+          defaultValue: "PER_10G",
+          options: [
+            { value: "PER_10G", label: "Per 10 gm (Gold)" },
+            { value: "PER_KG",  label: "Per kg (Silver)" },
+            { value: "PER_G",   label: "Per gm (Diamond)" },
+          ],
+        },
+      ];
     }
     return common;
   }, [title]);

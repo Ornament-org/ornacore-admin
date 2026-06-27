@@ -70,6 +70,14 @@ const SettingsPage = loadNamed(
   () => import("../features/settings/pages/SettingsPage.jsx"),
   "SettingsPage",
 );
+const FeatureFlagsPage = loadNamed(
+  () => import("../features/settings/pages/FeatureFlagsPage.jsx"),
+  "FeatureFlagsPage",
+);
+const AttributesPage = loadNamed(
+  () => import("../features/catalog/pages/AttributesPage.jsx"),
+  "AttributesPage",
+);
 
 export function AppRoutes() {
   return (
@@ -110,6 +118,7 @@ export function AppRoutes() {
             />
             <Route path="/catalog/collections" element={<CatalogPage title="Collections" />} />
             <Route path="/catalog/banners" element={<CatalogPage title="Banners" />} />
+            <Route path="/catalog/attributes" element={<AttributesPage />} />
 
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/create" element={<CreateProductPage />} />
@@ -162,6 +171,7 @@ export function AppRoutes() {
             <Route path="/reports/:reportType" element={<ReportsPage />} />
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings/feature-flags" element={<FeatureFlagsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

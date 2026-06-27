@@ -73,6 +73,7 @@
 .khatabook-toolbar {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .khatabook-toolbar button {
@@ -88,11 +89,22 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 150ms ease;
+  transition: background 150ms ease, color 150ms ease;
 
   &:hover {
     background: var(--gold-dark);
     border-color: var(--gold-dark);
+  }
+}
+
+.khatabook-toolbar__collection-btn {
+  background: #fff !important;
+  color: var(--gold) !important;
+
+  &:hover {
+    background: rgba(197, 138, 42, 0.06) !important;
+    border-color: var(--gold-dark) !important;
+    color: var(--gold-dark) !important;
   }
 }
 
@@ -481,6 +493,11 @@
   }
 }
 
+// ─── Metrics wrapper: transparent on desktop, flex row on mobile ──────────────
+.khatabook-order__metrics {
+  display: contents; // children slot directly into the parent 6-col grid
+}
+
 // ─── Responsive: invoice card ──────────────────────────────────────────────────
 @media (max-width: 1100px) {
   .khatabook-expanded {
@@ -644,6 +661,30 @@
   }
 }
 
+.khatabook-ledger__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+
+  select {
+    min-height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 0 32px 0 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    outline: none;
+
+    &:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201, 141, 47, 0.1);
+    }
+  }
+}
+
 // ─── Empty state ──────────────────────────────────────────────────────────────
 .khatabook-empty {
   padding: 32px;
@@ -688,13 +729,17 @@
 .khatabook-ledger__row {
   min-width: 680px;
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr;
-  gap: 10px;
-  padding: 9px 0;
+  grid-template-columns: 1.05fr minmax(220px, 2fr) 0.9fr 1fr 1fr;
+  gap: 12px;
+  padding: 11px 12px;
   border-bottom: 1px solid var(--line);
   align-items: center;
   font-size: 12px;
   color: var(--ink);
+}
+
+.khatabook-ledger__row--debit {
+  background: rgba(239, 68, 68, 0.025);
 }
 
 .khatabook-ledger__row--head {
@@ -707,11 +752,100 @@
   padding: 8px 0;
 }
 
+.khatabook-ledger__row > span {
+  min-width: 0;
+}
+
+.khatabook-ledger__row strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .khatabook-ledger__row small {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 10px;
   color: var(--muted);
+  line-height: 1.4;
+}
+
+.khatabook-ledger__type {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.09);
+  color: #2563eb;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.khatabook-ledger__type--metal_collection {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+}
+
+.khatabook-ledger__type--cash_conversion {
+  background: rgba(201, 141, 47, 0.12);
+  color: var(--gold-dark);
+}
+
+.khatabook-ledger__type--delivery {
+  background: rgba(239, 68, 68, 0.09);
+  color: #dc2626;
+}
+
+.khatabook-ledger__credit {
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.khatabook-ledger__neutral {
+  color: var(--muted);
+}
+
+.khatabook-ledger__balance {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.khatabook-ledger__detail {
+  font-family: var(--font-mono, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.01em;
+}
+
+.khatabook-ledger__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.khatabook-ledger__shimmer {
+  display: flex;
+  flex-direction: column;
+}
+
+.khatabook-ledger__shimmer-row {
+  min-width: 680px;
+  display: grid;
+  grid-template-columns: 1.05fr minmax(220px, 2fr) 0.9fr 1fr 1fr;
+  gap: 12px;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.khatabook-ledger__shimmer-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 // ─── Create order form ────────────────────────────────────────────────────────
@@ -1550,7 +1684,6 @@
 
 @media (max-width: 760px) {
   .khatabook-filters,
-  .khatabook-order__summary,
   .khatabook-create__topgrid,
   .khatabook-create__bottomgrid,
   .khatabook-create__twocol,
@@ -1561,20 +1694,6 @@
   .khatabook-create__headline,
   .khatabook-create__header-actions {
     flex-direction: column;
-  }
-
-  .khatabook-order__metric {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding: 8px 0 0;
-  }
-
-  .khatabook-order__date {
-    width: 68px;
-  }
-
-  .khatabook-order__status {
-    justify-content: space-between;
   }
 
   .khatabook-expanded {
@@ -1594,5 +1713,63 @@
   .khatabook-create__panels,
   .khatabook-create__collection-row {
     grid-template-columns: 1fr;
+  }
+}
+
+// ─── Mobile: order row 2-line layout + items card layout ──────────────────────
+@media (max-width: 640px) {
+  // ── Order summary: row 1 = date + identity + chevron, row 2 = metrics ───────
+  .khatabook-order__summary {
+    grid-template-columns: 62px 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 10px 12px;
+    padding: 12px 14px;
+
+    > .khatabook-order__date     { grid-column: 1; grid-row: 1; }
+    > .khatabook-order__identity { grid-column: 2; grid-row: 1; }
+    > .khatabook-order__status   { grid-column: 3; grid-row: 1; align-self: start; }
+    > .khatabook-order__metrics  { grid-column: 1 / -1; grid-row: 2; display: flex; }
+  }
+
+  // ── Metrics: three equal columns, divided by hairlines ──────────────────────
+  .khatabook-order__metrics {
+    display: flex;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+
+  .khatabook-order__metric {
+    flex: 1;
+    min-width: 0;
+    padding: 0 10px;
+    border-left: 1px solid var(--line);
+    border-top: 0;
+
+    &:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    small { font-size: 9px; }
+    strong { font-size: 12px; }
+  }
+
+  // ── Items Delivered: horizontal scroll (keep rows intact on mobile) ──────────
+  .order-invoice__section--items {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+
+    .order-invoice__table--items {
+      min-width: 400px;
+    }
+  }
+
+  // ── FIFO Settlement: horizontal scroll on mobile ─────────────────────────────
+  .order-invoice__section:has(.order-invoice__table--settlement) {
+    overflow-x: auto;
+
+    .order-invoice__table--settlement {
+      min-width: 540px;
+    }
   }
 }

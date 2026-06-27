@@ -144,6 +144,13 @@ export const khatabookService = {
     const { data } = await apiClient.get(`/admin/khatabook/order/${orderId}/ledger`, { params });
     return data;
   },
+  ledger: async (shopkeeperId, params = {}) => {
+    const { data } = await apiClient.get("/admin/khatabook/ledger", {
+      params: { shopkeeperId, ...params },
+      notification: false,
+    });
+    return data;
+  },
   createOrder: (payload) => apiClient.post("/admin/khatabook/orders", payload),
   previewOrder: async (payload) => {
     const { data } = await apiClient.post("/admin/khatabook/orders/preview", payload, {
@@ -172,6 +179,16 @@ export const khatabookService = {
   createCashCollection: (payload) =>
     apiClient.post("/admin/khatabook/collections/cash", payload),
 };
+export const analyticsService = {
+  shopkeeperOverview: async (shopkeeperId, startDate, endDate) => {
+    const { data } = await apiClient.get(
+      `/admin/analytics/shopkeeper/${shopkeeperId}/overview`,
+      { params: { startDate, endDate }, notification: false },
+    );
+    return data;
+  },
+};
+
 export const dashboardService = createResourceService("/admin/reports/dashboard");
 
 export const mediaService = {
@@ -183,6 +200,45 @@ export const mediaService = {
       headers: { "Content-Type": "multipart/form-data" },
       notification: { success: false },
     });
+    return data;
+  },
+};
+
+export const attributeService = {
+  ...createResourceService("/admin/attributes"),
+  addValue: async (attributeId, payload) => {
+    const { data } = await apiClient.post(`/admin/attributes/${attributeId}/values`, payload);
+    return data;
+  },
+  updateValue: async (attributeId, valueId, payload) => {
+    const { data } = await apiClient.patch(
+      `/admin/attributes/${attributeId}/values/${valueId}`,
+      payload,
+    );
+    return data;
+  },
+  removeValue: async (attributeId, valueId) => {
+    const { data } = await apiClient.delete(`/admin/attributes/${attributeId}/values/${valueId}`);
+    return data;
+  },
+};
+
+export const featureFlagService = {
+  ...createResourceService("/admin/feature-flags"),
+  stats: async () => {
+    const { data } = await apiClient.get("/admin/feature-flags/stats");
+    return data;
+  },
+  toggle: async (id) => {
+    const { data } = await apiClient.post(`/admin/feature-flags/${id}/toggle`);
+    return data;
+  },
+  auditTrail: async (id, params) => {
+    const { data } = await apiClient.get(`/admin/feature-flags/${id}/audit`, { params });
+    return data;
+  },
+  modules: async () => {
+    const { data } = await apiClient.get("/admin/feature-flags/modules");
     return data;
   },
 };

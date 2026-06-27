@@ -1,16 +1,19 @@
 import { formatMoney } from "../../../components/khatabookFormatters.js";
+import { rateUnitMultiplier, rateUnitShort } from "../rateUnit.js";
 
 const toNumber = (v) => (v === "" || v == null ? 0 : Number(v));
 
-export const calcConverted = (cash, rate) => {
+export const calcConverted = (cash, rate, rateUnit = "PER_10G") => {
   const c = toNumber(cash);
   const r = toNumber(rate);
-  return c > 0 && r > 0 ? (c / r) * 10 : 0;
+  if (c <= 0 || r <= 0) return 0;
+  return (c / r) * rateUnitMultiplier(rateUnit);
 };
 
-export function CashCollectionForm({ form, onChange, currentRate }) {
+export function CashCollectionForm({ form, onChange, currentRate, rateUnit = "PER_10G" }) {
   const rate      = form.metalRate || currentRate || "";
-  const converted = calcConverted(form.cashAmount, rate);
+  const converted = calcConverted(form.cashAmount, rate, rateUnit);
+  const unitShort = rateUnitShort(rateUnit);
 
   return (
     <>
@@ -33,7 +36,7 @@ export function CashCollectionForm({ form, onChange, currentRate }) {
 
       <div className="collection-modal__field">
         <label className="collection-modal__label">
-          Rate (per 10 gm) <span>*</span>
+          Rate ({unitShort}) <span>*</span>
         </label>
         <div className="collection-modal__input-wrap">
           <input
@@ -48,7 +51,7 @@ export function CashCollectionForm({ form, onChange, currentRate }) {
         </div>
         {currentRate && !form.metalRate && (
           <span style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
-            Using market rate {formatMoney(currentRate)}
+            Using market rate {formatMoney(currentRate)} {unitShort}
           </span>
         )}
       </div>

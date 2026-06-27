@@ -3,6 +3,7 @@ import {
   ChartNoAxesCombined,
   CircleDollarSign,
   ClipboardList,
+  Flag,
   Gem,
   LayoutDashboard,
   PackageSearch,
@@ -42,6 +43,7 @@ export const navigationGroups = [
         children: [
           { label: "Metals", path: "/catalog/metals" },
           { label: "Categories", path: "/catalog/categories" },
+          { label: "Attributes", path: "/catalog/attributes" },
           { label: "Collections", path: "/catalog/collections" },
           { label: "Banners", path: "/catalog/banners" },
         ],
@@ -129,6 +131,7 @@ export const navigationGroups = [
         ],
       },
       { label: "Audit Logs", icon: ScrollText, path: "/audit-logs" },
+      { label: "Feature Flags", icon: Flag, path: "/settings/feature-flags" },
       { label: "Settings", icon: Settings, path: "/settings" },
     ],
   },

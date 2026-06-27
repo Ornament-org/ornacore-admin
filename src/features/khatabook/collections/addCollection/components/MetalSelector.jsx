@@ -1,7 +1,8 @@
 import { ChevronDown, Gem } from "lucide-react";
 import { formatMoney } from "../../../components/khatabookFormatters.js";
+import { rateUnitShort } from "../rateUnit.js";
 
-export function MetalSelector({ metals, selectedMetalId, onSelect, currentRate }) {
+export function MetalSelector({ metals, selectedMetalId, onSelect, currentRate, rateUnit = "PER_10G", loading = false }) {
   return (
     <div className="collection-modal__metal-row">
       <div>
@@ -12,6 +13,7 @@ export function MetalSelector({ metals, selectedMetalId, onSelect, currentRate }
           <Gem size={16} className="collection-modal__metal-icon" />
           <select
             value={selectedMetalId ?? ""}
+            disabled={loading}
             onChange={(e) => onSelect(e.target.value)}
           >
             <option value="">Select metal</option>
@@ -27,7 +29,7 @@ export function MetalSelector({ metals, selectedMetalId, onSelect, currentRate }
 
       {currentRate != null && (
         <div>
-          <div className="collection-modal__metal-rate-label">Rate (per 10 gm)</div>
+          <div className="collection-modal__metal-rate-label">Rate ({rateUnitShort(rateUnit)})</div>
           <div className="collection-modal__metal-rate-box">
             <div className="collection-modal__metal-rate-value">
               {formatMoney(currentRate)}

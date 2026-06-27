@@ -8,7 +8,7 @@ export function ShopOverview({ shopkeeperId, ordersSummary, ledgerSummary, recen
   return (
     <div className="shop-overview">
 
-      <OverviewAnalyticsCard shopkeeperId={shopkeeperId} />
+     
 
       <div className="shop-overview__analytics-grid">
         <OrderStatsCard orders={ordersSummary} />

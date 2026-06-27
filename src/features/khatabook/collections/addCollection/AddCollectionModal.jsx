@@ -1,23 +1,24 @@
 import { Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { khatabookService, shopkeeperService } from "../../../../services/resourceServices.js";
+import { khatabookService, metalService, shopkeeperService } from "../../../../services/resourceServices.js";
 import { CashCollectionForm, calcConverted } from "./components/CashCollectionForm.jsx";
 import { CollectionFooter } from "./components/CollectionFooter.jsx";
 import { CollectionHeader } from "./components/CollectionHeader.jsx";
 import { GramCollectionForm, calcFine } from "./components/GramCollectionForm.jsx";
 import { MetalSelector } from "./components/MetalSelector.jsx";
 import { ShopSearchDropdown } from "./components/ShopSearchDropdown.jsx";
+import { rateUnitShort } from "./rateUnit.js";
 import "./addCollection.scss";
 
 const toNumber = (v) => (v === "" || v == null ? 0 : Number(v));
 const fmt = (n) => Number(n).toFixed(3);
 const fmtMoney = (n) => `₹${Number(n).toLocaleString("en-IN")}`;
 
-function CombinedCalc({ currentDue, advanceBalance, fine, cashAmount, cashRate }) {
+function CombinedCalc({ currentDue, advanceBalance, fine, cashAmount, cashRate, rateUnit = "PER_10G" }) {
   const due           = toNumber(currentDue);
-  const existing      = toNumber(advanceBalance);  // advance already on account
+  const existing      = toNumber(advanceBalance);
   const fineAmt       = toNumber(fine);
-  const cashFine      = calcConverted(cashAmount, cashRate);
+  const cashFine      = calcConverted(cashAmount, cashRate, rateUnit);
   const totalColl     = fineAmt + cashFine;
   const netDue        = Math.max(0, due - existing);   // effective current due
   const finalDue      = Math.max(0, netDue - totalColl);
@@ -53,7 +54,7 @@ function CombinedCalc({ currentDue, advanceBalance, fine, cashAmount, cashRate }
           <span>
             Cash collected
             <span className="calc-cash-detail">
-              &nbsp;{fmtMoney(cashAmount)} X {fmtMoney(cashRate)}/10gm
+              &nbsp;{fmtMoney(cashAmount)} × {fmtMoney(cashRate)}{rateUnitShort(rateUnit)}
             </span>
           </span>
           <span className="calc-collected">− {fmt(cashFine)} gm</span>
@@ -168,15 +169,22 @@ export function AddCollectionModal({ onClose, onSuccess, defaultShopkeeperId, de
     Promise.all([
       khatabookService.metals(selectedShop.id),
       khatabookService.orders(selectedShop.id, { pageSize: 1 }),
+      metalService.list({ isActive: true, pageSize: 100 }),
     ])
-      .then(([metalsRes, ordersRes]) => {
+      .then(([metalsRes, ordersRes, globalRes]) => {
         const list = metalsRes.data ?? metalsRes ?? [];
-        setMetals(list);
+        const globalMetals = globalRes.data ?? [];
+        const rateUnitMap = new Map(globalMetals.map((m) => [String(m.id), m.rateUnit ?? "PER_10G"]));
+        const enriched = list.map((r) => ({
+          ...r,
+          metal: { ...r.metal, rateUnit: rateUnitMap.get(String(r.metal.id)) ?? r.metal.rateUnit ?? "PER_10G" },
+        }));
+        setMetals(enriched);
         // BUG-3: prefer the defaultMetalId if provided, otherwise first metal
         const preselect = defaultMetalId
-          ? list.find((r) => String(r.metal.id) === String(defaultMetalId))
+          ? enriched.find((r) => String(r.metal.id) === String(defaultMetalId))
           : null;
-        const initial = preselect ?? list[0];
+        const initial = preselect ?? enriched[0];
         if (initial) setSelectedMetalId(String(initial.metal.id));
 
         const recentOrders = ordersRes.data ?? [];
@@ -220,12 +228,13 @@ export function AddCollectionModal({ onClose, onSuccess, defaultShopkeeperId, de
   const currentRate     = selectedMetal?.currentRate ?? selectedMetal?.metal?.currentRate ?? null;
   const metalTunch      = selectedMetal?.metal?.tunch ?? 100;
   const metalName       = selectedMetal?.metal?.name ?? "Metal";
+  const rateUnit        = selectedMetal?.metal?.rateUnit ?? "PER_10G";
   const currentDue      = selectedMetal?.outstandingDue ?? selectedMetal?.ledgerBalance ?? 0;
   const advanceBalance  = selectedMetal?.advanceBalance ?? 0;
 
   const fine      = calcFine(gramForm.weight, metalTunch);
   const cashRate  = toNumber(cashForm.metalRate) || toNumber(currentRate);
-  const cashFine  = calcConverted(cashForm.cashAmount, cashRate);
+  const cashFine  = calcConverted(cashForm.cashAmount, cashRate, rateUnit);
 
   // ── validate: at least one collection entry ──────────────────────────────────
   const isValid = useMemo(() => {
@@ -305,6 +314,8 @@ export function AddCollectionModal({ onClose, onSuccess, defaultShopkeeperId, de
               selectedMetalId={selectedMetalId}
               onSelect={setSelectedMetalId}
               currentRate={currentRate}
+              rateUnit={rateUnit}
+              loading={metalsLoading}
             />
 
             {selectedMetalId && (
@@ -334,6 +345,7 @@ export function AddCollectionModal({ onClose, onSuccess, defaultShopkeeperId, de
                         form={cashForm}
                         onChange={updateCash}
                         currentRate={currentRate}
+                        rateUnit={rateUnit}
                       />
                     </div>
                   </div>
@@ -349,6 +361,7 @@ export function AddCollectionModal({ onClose, onSuccess, defaultShopkeeperId, de
                     fine={fine}
                     cashAmount={cashForm.cashAmount}
                     cashRate={cashRate}
+                    rateUnit={rateUnit}
                   />
                 </div>
 

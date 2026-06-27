@@ -7,9 +7,9 @@ import { metalService, shopkeeperService } from "../../../services/resourceServi
 import { KhatabookPage } from "../../khatabook/pages/KhatabookPage.jsx";
 import { MetalCreditLimitEditor } from "../components/MetalCreditLimitEditor.jsx";
 import { ShopOverview } from "../components/overview/ShopOverview.jsx";
-import { MetalSummaryCards } from "../components/shopkeeper-details/MetalSummaryCards.jsx";
 import { ShopkeeperHeaderCard } from "../components/shopkeeper-details/ShopkeeperHeaderCard.jsx";
 import "../components/shopkeeper-details/ShopkeeperDetails.scss";
+import { OverviewAnalyticsCard } from "../components/shopkeeper-details/OverviewAnalyticsCard.jsx";
 
 const tabs = ["Overview", "Orders (Khatabook)", "Ledger"];
 
@@ -28,6 +28,8 @@ export function ShopkeeperDetailsPage() {
   const [metals, setMetals] = useState([]);
   const [modal, setModal] = useState({ open: false, type: null });
   const [loading, setLoading] = useState(true);
+  const [analyticsKey, setAnalyticsKey] = useState(0);
+  const handleCollectionAdded = useCallback(() => setAnalyticsKey((k) => k + 1), []);
   const [error, setError] = useState("");
 
   const loadDetails = useCallback(() => {
@@ -129,8 +131,8 @@ export function ShopkeeperDetailsPage() {
         onEdit={() => setModal({ open: true, type: "edit" })}
         onEditLimits={() => setModal({ open: true, type: "limits" })}
       />
+      <OverviewAnalyticsCard shopkeeperId={id} refreshKey={analyticsKey} />
 
-      <MetalSummaryCards summary={summary} />
 
       <div className="shopkeeper-details__tabs" role="tablist" aria-label="Shopkeeper sections">
         {tabs.map((tab) => (
@@ -155,9 +157,9 @@ export function ShopkeeperDetailsPage() {
         />
       )}
 
-      {activeTab === "Orders (Khatabook)" && <KhatabookPage shopkeeperId={id} view="orders" />}
+      {activeTab === "Orders (Khatabook)" && <KhatabookPage shopkeeperId={id} shopName={state.details?.shop?.shopName} onCollectionAdded={handleCollectionAdded} view="orders" />}
 
-      {activeTab === "Ledger" && <KhatabookPage shopkeeperId={id} view="ledger" />}
+      {activeTab === "Ledger" && <KhatabookPage shopkeeperId={id} shopName={state.details?.shop?.shopName} onCollectionAdded={handleCollectionAdded} view="ledger" />}
 
       <ResourceFormModal
         description="Update shopkeeper profile and optional per-metal credit limits."

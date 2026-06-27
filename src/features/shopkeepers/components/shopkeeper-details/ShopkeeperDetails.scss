@@ -21,6 +21,7 @@
 
 /* ── Header Card ──────────────────────────────────────────── */
 .sd-header {
+  position: relative;
   background: linear-gradient(135deg, #fff 55%, #fdf6e8 100%);
   border: 1.5px solid #ece7de;
   border-radius: 20px;
@@ -36,6 +37,7 @@
     gap: 20px;
     flex: 1;
     min-width: 0;
+    padding-right: 44px;
   }
 
   &__avatar {
@@ -108,11 +110,28 @@
     white-space: nowrap;
   }
 
-  &__actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    flex-shrink: 0;
+  &__edit-btn {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid #e8e0d0;
+    border-radius: 10px;
+    background: #fff;
+    color: #6b7280;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &:hover {
+      border-color: #c58a2a;
+      color: #c58a2a;
+      background: rgba(197, 138, 42, 0.06);
+      box-shadow: 0 2px 8px rgba(197, 138, 42, 0.15);
+    }
   }
 }
 
@@ -447,11 +466,19 @@
   .sd-header {
     flex-direction: column;
     align-items: stretch;
-    padding: 20px;
+    padding: 20px 20px 18px;
 
-    &__left { flex-direction: column; align-items: flex-start; gap: 14px; }
+    &__left {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
+      padding-right: 0;
+    }
 
-    &__actions { flex-direction: row; }
+    &__edit-btn {
+      top: 14px;
+      right: 14px;
+    }
   }
 }
 

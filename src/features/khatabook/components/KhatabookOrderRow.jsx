@@ -24,20 +24,22 @@ export function KhatabookOrderRow({ order, expanded, onToggle, onViewLedger, onA
           </em>
           <small>Note: {order.notes || "Regular delivery"}</small>
         </span>
-        <span className="khatabook-order__metric">
-          <small>Fine Delivered</small>
-          <strong>{formatQuantity(order.fineDelivered)}</strong>
-        </span>
-        <span className="khatabook-order__metric">
-          <small>Credit Applied</small>
-          <strong>{formatQuantity(order.orderSummary?.collectionApplied ?? order.creditReceived)}</strong>
-        </span>
-        <span className="khatabook-order__metric">
-          <small>Order Due</small>
-          <strong className={dueIsClear ? "is-clear" : "is-due"}>
-            {formatQuantity(order.orderDue ?? order.outstandingDue)}
-          </strong>
-        </span>
+        <div className="khatabook-order__metrics">
+          <span className="khatabook-order__metric">
+            <small>Fine Delivered</small>
+            <strong>{formatQuantity(order.fineDelivered)}</strong>
+          </span>
+          <span className="khatabook-order__metric">
+            <small>Credit Applied</small>
+            <strong>{formatQuantity(order.orderSummary?.collectionApplied ?? order.creditReceived)}</strong>
+          </span>
+          <span className="khatabook-order__metric">
+            <small>Order Due</small>
+            <strong className={dueIsClear ? "is-clear" : "is-due"}>
+              {formatQuantity(order.orderDue ?? order.outstandingDue)}
+            </strong>
+          </span>
+        </div>
         <span className="khatabook-order__status">
           {humanStatus(order.status)}
           {expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
