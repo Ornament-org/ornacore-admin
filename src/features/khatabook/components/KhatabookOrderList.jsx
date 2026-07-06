@@ -8,6 +8,7 @@ export function KhatabookOrderList({
   onViewLedger,
   onAddMetalCollection,
   onAddCashCollection,
+  shopName,
 }) {
   if (!orders.length) {
     return <div className="khatabook-empty">No khatabook orders found for this selection.</div>;
@@ -24,6 +25,7 @@ export function KhatabookOrderList({
           onViewLedger={onViewLedger}
           onAddMetalCollection={onAddMetalCollection}
           onAddCashCollection={onAddCashCollection}
+          shopName={shopName}
         />
       ))}
     </div>

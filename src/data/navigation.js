@@ -6,6 +6,7 @@ import {
   Flag,
   Gem,
   LayoutDashboard,
+  LayoutTemplate,
   PackageSearch,
   ScrollText,
   Settings,
@@ -42,6 +43,7 @@ export const navigationGroups = [
         path: "/catalog/metals",
         children: [
           { label: "Metals", path: "/catalog/metals" },
+          { label: "Metal Rates", path: "/catalog/metal-rates" },
           { label: "Categories", path: "/catalog/categories" },
           { label: "Attributes", path: "/catalog/attributes" },
           { label: "Collections", path: "/catalog/collections" },
@@ -103,6 +105,16 @@ export const navigationGroups = [
           { label: "Cash Collection", path: "/payments/collections" },
           { label: "Credit Orders", path: "/payments/credit" },
         ],
+      },
+    ],
+  },
+  {
+    label: "CMS",
+    items: [
+      {
+        label: "Homepage Management",
+        icon: LayoutTemplate,
+        path: "/cms/homepage",
       },
     ],
   },

@@ -21,6 +21,18 @@
       border-color: var(--line-strong);
       background: var(--surface-soft);
     }
+
+    &:disabled {
+      color: #c2bfb5;
+      background: var(--surface-soft);
+      cursor: not-allowed;
+
+      &:hover {
+        color: #c2bfb5;
+        border-color: var(--line);
+        background: var(--surface-soft);
+      }
+    }
   }
 
   &__menu-wrap {
@@ -28,10 +40,6 @@
   }
 
   &__dropdown {
-    position: absolute;
-    z-index: 100;
-    right: 0;
-    top: calc(100% + 6px);
     display: grid;
     min-width: 148px;
     gap: 2px;
@@ -40,6 +48,14 @@
     border-radius: 10px;
     background: var(--surface);
     box-shadow: 0 14px 36px rgba(40, 34, 24, 0.11);
+
+    // Portaled to <body> so it can never be clipped by the table's own
+    // scroll/overflow containers — positioned via inline top/right computed
+    // from the trigger button's real viewport coordinates.
+    &--portal {
+      position: fixed;
+      z-index: 1000;
+    }
   }
 
   &__item {

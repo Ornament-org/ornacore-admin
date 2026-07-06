@@ -5,8 +5,10 @@ import {
   ChevronLeft,
   ChevronRight,
   FolderTree,
-  Gem,
   Info,
+  Layers,
+  Package,
+  Pencil,
   Plus,
   Save,
   Search,
@@ -21,20 +23,28 @@ import { FormAlert } from "../../../components/common/FormAlert.jsx";
 import { StatusBadge } from "../../../components/common/StatusBadge.jsx";
 import { StatusToggle } from "../../../components/common/StatusToggle.jsx";
 import { PageHeader } from "../../../components/layout/PageHeader.jsx";
-import { apiErrorMessage } from "../../../services/apiClient.js";
+import { apiErrorMessage, getApiError } from "../../../services/apiClient.js";
 import {
+  attributeService,
   categoryService,
   mediaService,
   metalService,
   productService,
 } from "../../../services/resourceServices.js";
 import { calculateMetalPurityFromTunch } from "../../../utils/goldPurity.js";
+import { VariantCard } from "../components/VariantCard.jsx";
+import { VariantOptionsBuilder } from "../components/VariantOptionsBuilder.jsx";
+import {
+  blankVariant,
+  buildVariantCombosFromAttributes,
+  comboKey,
+  generateSku,
+} from "../utils/productVariants.js";
 import "../Products.scss";
 
 const steps = [
   { label: "Product Details", icon: Info },
-  { label: "Jewelry Details", icon: Gem },
-  { label: "Pricing, Stock & Images", icon: Boxes },
+  { label: "Variants & Pricing", icon: Boxes },
   { label: "Review", icon: Check },
 ];
 
@@ -48,28 +58,20 @@ const blankProduct = {
   designCode: "",
   description: "",
   status: "ACTIVE",
+  productType: "SIMPLE",
   metalId: "",
   categoryIds: [],
   primaryCategoryId: "",
-  sku: "",
-  variantName: "",
-  purity: "22K",
-  karat: "22",
-  tunch: "",
-  weightGrams: "",
-  minimumOrderQuantity: "1",
-  basePrice: "",
-  openingStock: "0",
-  reorderLevel: "5",
 };
 
-function Field({ label, required = false, children, className }) {
+function Field({ label, required = false, hint, children, className }) {
   return (
     <label className={`product-field ${className || ""}`}>
       <span>
         {label} {required && <em>*</em>}
       </span>
       {children}
+      {hint && <small className="field-hint">{hint}</small>}
     </label>
   );
 }
@@ -357,6 +359,10 @@ export function CreateProductPage() {
   const editing = Boolean(id);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(blankProduct);
+  const [selectedAttributeRows, setSelectedAttributeRows] = useState([]);
+  const [attributeCatalog, setAttributeCatalog] = useState([]);
+  const [attributesLoading, setAttributesLoading] = useState(true);
+  const [variants, setVariants] = useState(() => [blankVariant({ expanded: true })]);
   const [imageFiles, setImageFiles] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
@@ -368,6 +374,7 @@ export function CreateProductPage() {
   const [error, setError] = useState(null);
   const imageFilesRef = useRef([]);
   const imageInputRef = useRef(null);
+  const skuCounterRef = useRef(1);
   const ActiveStepIcon = steps[step].icon;
 
   useEffect(() => {
@@ -377,7 +384,11 @@ export function CreateProductPage() {
   useEffect(
     () => () => {
       imageFilesRef.current.forEach((entry) => URL.revokeObjectURL(entry.previewUrl));
+      variants.forEach((variant) =>
+        (variant.imageFiles ?? []).forEach((entry) => URL.revokeObjectURL(entry.previewUrl)),
+      );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -403,6 +414,12 @@ export function CreateProductPage() {
         }
       })
       .catch((requestError) => setError(apiErrorMessage(requestError)));
+
+    attributeService
+      .list({ pageSize: 100 })
+      .then((response) => setAttributeCatalog(response.data ?? []))
+      .catch((requestError) => setError(apiErrorMessage(requestError)))
+      .finally(() => setAttributesLoading(false));
   }, [editing]);
 
   useEffect(() => {
@@ -411,42 +428,65 @@ export function CreateProductPage() {
       .get(id)
       .then((response) => {
         const product = response.data;
-        const variant = product.variants?.[0] ?? {};
         const categoryMappings = [...(product.categoryMappings ?? [])].sort(
           (first, second) => first.sortOrder - second.sortOrder,
         );
-        const fallbackCategoryId = product.categoryId ? String(product.categoryId) : "";
         const mappedCategoryIds = categoryMappings.map(({ categoryId }) => String(categoryId));
         const primaryMapping = categoryMappings.find(({ isPrimary }) => isPrimary);
-        setExistingImages(
-          [...(product.images ?? [])].sort(
-            (first, second) => first.displayOrder - second.displayOrder,
-          ),
+        const allImages = [...(product.images ?? [])].sort(
+          (first, second) => first.displayOrder - second.displayOrder,
         );
+        setExistingImages(allImages.filter((image) => !image.productVariantId));
+
+        const loadedVariants = (product.variants ?? []).map((variant, index) => {
+          const attributeValues = variant.attributeValues ?? [];
+          const attributes = Object.fromEntries(
+            attributeValues.map((av) => [av.attribute?.name ?? `Attribute ${av.attributeId}`, av.value]),
+          );
+          return {
+            ...blankVariant({
+              attributes,
+              attributeValueIds: attributeValues.map((av) => av.id),
+              name: variant.name ?? null,
+              expanded: index === 0,
+            }),
+            id: variant.id,
+            sku: variant.sku ?? "",
+            skuAuto: false,
+            purity: variant.purity ?? "",
+            karat: variant.karat ?? "",
+            publicPurity: variant.publicPurity ?? "",
+            publicKarat: variant.publicKarat ?? "",
+            tunch: variant.tunch ?? "",
+            weightGrams: variant.weightGrams ?? "",
+            openingStock: variant.inventory?.onHandQuantity ?? "0",
+            reorderLevel: variant.inventory?.reorderLevel ?? "5",
+            existingImages: allImages.filter((image) => image.productVariantId === variant.id),
+          };
+        });
+
+        const attributeRows = new Map();
+        loadedVariants.forEach((variant) => {
+          (product.variants.find((row) => row.id === variant.id)?.attributeValues ?? []).forEach((av) => {
+            const row = attributeRows.get(av.attributeId) ?? { attributeId: String(av.attributeId), valueIds: [] };
+            if (!row.valueIds.includes(av.id)) row.valueIds.push(av.id);
+            attributeRows.set(av.attributeId, row);
+          });
+        });
+        setSelectedAttributeRows(Array.from(attributeRows.values()));
+
         setForm({
           name: product.name ?? "",
           designCode: product.designCode ?? "",
           description: product.description ?? "",
           status: product.status ?? "DRAFT",
+          productType: product.productType ?? "SIMPLE",
           metalId: String(product.metalId ?? ""),
-          categoryIds: mappedCategoryIds.length
-            ? mappedCategoryIds
-            : fallbackCategoryId
-              ? [fallbackCategoryId]
-              : [],
-          primaryCategoryId: String(primaryMapping?.categoryId ?? fallbackCategoryId),
-          variantId: variant.id,
-          sku: variant.sku ?? "",
-          variantName: variant.name ?? "",
-          purity: variant.purity ?? "",
-          karat: variant.karat ?? "",
-          tunch: variant.tunch ?? "",
-          weightGrams: variant.weightGrams ?? "",
-          minimumOrderQuantity: variant.minimumOrderQuantity ?? "1",
-          basePrice: "",
-          openingStock: variant.inventory?.onHandQuantity ?? "0",
-          reorderLevel: variant.inventory?.reorderLevel ?? "5",
+          categoryIds: mappedCategoryIds,
+          primaryCategoryId: String(primaryMapping?.categoryId ?? ""),
         });
+        setVariants(loadedVariants.length ? loadedVariants : [blankVariant({ expanded: true })]);
+        skuCounterRef.current = loadedVariants.length + 1;
       })
       .catch((requestError) => setError(apiErrorMessage(requestError)));
   }, [editing, id]);
@@ -456,12 +496,47 @@ export function CreateProductPage() {
     setForm((current) => ({ ...current, [name]: value }));
   };
 
+  const selectedMetal = options.metals.find((metal) => String(metal.id) === form.metalId);
+  const visibleCategories = useMemo(() => {
+    if (!form.metalId) return [];
+    if (categoryScope === CATEGORY_SCOPE_ALL) return options.categories;
+    return options.categories.filter(
+      (category) => !category.metalId || String(category.metalId) === String(form.metalId),
+    );
+  }, [categoryScope, form.metalId, options.categories]);
+  const selectedCategories = form.categoryIds
+    .map((categoryId) => options.categories.find((category) => String(category.id) === categoryId))
+    .filter(Boolean);
+  const selectedPrimaryCategory = selectedCategories.find(
+    (category) => String(category.id) === form.primaryCategoryId,
+  );
+  const skuCategoryName = selectedPrimaryCategory?.name ?? selectedCategories[0]?.name;
+
+  // Keep auto-generated SKUs (untouched by the admin) in sync with metal/category selection.
+  useEffect(() => {
+    const metalCode = selectedMetal?.code;
+    setVariants((current) =>
+      current.map((variant) =>
+        variant.skuAuto
+          ? {
+              ...variant,
+              sku: generateSku({
+                metalCode,
+                categoryName: skuCategoryName,
+                sequence: variant.skuSequence ?? 1,
+              }),
+            }
+          : variant,
+      ),
+    );
+  }, [selectedMetal?.code, skuCategoryName]);
+
   const setMetal = (event) => {
     const metalId = event.target.value;
     setCategoryScope(CATEGORY_SCOPE_METAL);
     setForm((current) => {
       const categoryIds = current.categoryIds.filter((categoryId) => {
-        const category = options.categories.find(({ id }) => String(id) === String(categoryId));
+        const category = options.categories.find(({ id: catId }) => String(catId) === String(categoryId));
         return category && (!category.metalId || String(category.metalId) === String(metalId));
       });
       const primaryCategoryId = categoryIds.includes(current.primaryCategoryId)
@@ -472,20 +547,9 @@ export function CreateProductPage() {
     });
   };
 
-  const setTunch = (event) => {
-    const tunch = event.target.value;
-    const calculated = calculateMetalPurityFromTunch(tunch);
-    setForm((current) => ({
-      ...current,
-      tunch,
-      purity: calculated.purity,
-      karat: calculated.karat,
-    }));
-  };
-
   const toggleCategory = (categoryId) => {
     const normalizedId = String(categoryId);
-    const category = options.categories.find(({ id }) => String(id) === normalizedId);
+    const category = options.categories.find(({ id: catId }) => String(catId) === normalizedId);
     if (
       !form.categoryIds.includes(normalizedId) &&
       category?.metalId &&
@@ -497,7 +561,7 @@ export function CreateProductPage() {
     setForm((current) => {
       const selected = current.categoryIds.includes(normalizedId);
       const categoryIds = selected
-        ? current.categoryIds.filter((id) => id !== normalizedId)
+        ? current.categoryIds.filter((catId) => catId !== normalizedId)
         : [...current.categoryIds, normalizedId];
       const primaryCategoryId = selected
         ? current.primaryCategoryId === normalizedId
@@ -521,6 +585,152 @@ export function CreateProductPage() {
       categoryIds: [],
       primaryCategoryId: "",
     }));
+
+  const setProductType = (productType) => {
+    setForm((current) => ({ ...current, productType }));
+    setSelectedAttributeRows([]);
+    if (productType === "SIMPLE") {
+      const sequence = skuCounterRef.current;
+      skuCounterRef.current += 1;
+      const variant = blankVariant({ expanded: true });
+      variant.skuSequence = sequence;
+      variant.sku = generateSku({
+        metalCode: selectedMetal?.code,
+        categoryName: skuCategoryName,
+        sequence,
+      });
+      setVariants([variant]);
+    } else {
+      setVariants([]);
+    }
+  };
+
+  const addAttributeValue = async (attributeId, value) => {
+    const created = await attributeService.addValue(attributeId, { value });
+    const newValue = created.data;
+    setAttributeCatalog((current) =>
+      current.map((attribute) =>
+        String(attribute.id) === String(attributeId)
+          ? { ...attribute, values: [...(attribute.values ?? []), newValue] }
+          : attribute,
+      ),
+    );
+    setSelectedAttributeRows((current) =>
+      current.map((row) =>
+        String(row.attributeId) === String(attributeId)
+          ? { ...row, valueIds: [...row.valueIds, newValue.id] }
+          : row,
+      ),
+    );
+  };
+
+  const generateVariants = () => {
+    const resolvedAttributes = selectedAttributeRows
+      .map((row) => {
+        const attribute = attributeCatalog.find((item) => String(item.id) === String(row.attributeId));
+        if (!attribute) return null;
+        return {
+          attributeId: attribute.id,
+          attributeName: attribute.name,
+          values: (attribute.values ?? []).filter((value) => row.valueIds.includes(value.id)),
+        };
+      })
+      .filter(Boolean);
+
+    const combos = buildVariantCombosFromAttributes(resolvedAttributes);
+    if (!combos.length) return;
+
+    setVariants((current) => {
+      const existingByKey = new Map(
+        current.map((variant) => [comboKey(variant.attributeValueIds), variant]),
+      );
+      const nextVariants = combos.map((combo) => {
+        const attributeValueIds = combo.map(({ valueId }) => valueId);
+        const key = comboKey(attributeValueIds);
+        const existing = existingByKey.get(key);
+        if (existing) return existing;
+
+        const attributes = Object.fromEntries(combo.map(({ attributeName, value }) => [attributeName, value]));
+        const sequence = skuCounterRef.current;
+        skuCounterRef.current += 1;
+        const variant = blankVariant({
+          attributes,
+          attributeValueIds,
+          name: combo.map(({ value }) => value).join(" / "),
+        });
+        variant.skuSequence = sequence;
+        variant.sku = generateSku({
+          metalCode: selectedMetal?.code,
+          categoryName: skuCategoryName,
+          sequence,
+        });
+        return variant;
+      });
+
+      if (nextVariants.length && !nextVariants.some((variant) => variant.expanded)) {
+        nextVariants[0] = { ...nextVariants[0], expanded: true };
+      }
+      return nextVariants;
+    });
+  };
+
+  const toggleVariantExpanded = (key) =>
+    setVariants((current) =>
+      current.map((variant) =>
+        variant._key === key ? { ...variant, expanded: !variant.expanded } : variant,
+      ),
+    );
+
+  const updateVariant = (key, patch) =>
+    setVariants((current) =>
+      current.map((variant) => (variant._key === key ? { ...variant, ...patch } : variant)),
+    );
+
+  const setVariantTunch = (key, tunch) => {
+    const calculated = calculateMetalPurityFromTunch(tunch);
+    updateVariant(key, { tunch, purity: calculated.purity, karat: calculated.karat });
+  };
+
+  const removeVariant = (key) =>
+    setVariants((current) => current.filter((variant) => variant._key !== key));
+
+  const addVariantImages = (key, files) => {
+    setVariants((current) =>
+      current.map((variant) => {
+        if (variant._key !== key) return variant;
+        const entries = files.map((file) => ({
+          id: `${file.name}-${file.size}-${file.lastModified}`,
+          file,
+          previewUrl: URL.createObjectURL(file),
+        }));
+        return { ...variant, imageFiles: [...variant.imageFiles, ...entries] };
+      }),
+    );
+  };
+
+  const removeVariantNewImage = (key, imageId) => {
+    setVariants((current) =>
+      current.map((variant) => {
+        if (variant._key !== key) return variant;
+        const removed = variant.imageFiles.find((entry) => entry.id === imageId);
+        if (removed) URL.revokeObjectURL(removed.previewUrl);
+        return { ...variant, imageFiles: variant.imageFiles.filter((entry) => entry.id !== imageId) };
+      }),
+    );
+  };
+
+  const removeVariantExistingImage = (key, imageId) => {
+    setVariants((current) =>
+      current.map((variant) => {
+        if (variant._key !== key) return variant;
+        return {
+          ...variant,
+          existingImages: variant.existingImages.filter((image) => image.id !== imageId),
+          removedImageIds: [...new Set([...variant.removedImageIds, imageId])],
+        };
+      }),
+    );
+  };
 
   const addImageFiles = (selectedFiles) => {
     setImageError("");
@@ -583,59 +793,100 @@ export function CreateProductPage() {
     addImageFiles(event.dataTransfer.files);
   };
 
-  const payload = (status = form.status) => ({
+  const buildVariantPayload = (variant) => ({
+    ...(variant.id ? { id: variant.id } : {}),
+    sku: variant.sku,
+    name: variant.name || null,
+    purity: variant.purity || null,
+    karat: variant.karat ? Number(variant.karat) : null,
+    publicPurity: variant.publicPurity || null,
+    publicKarat: variant.publicKarat ? Number(variant.publicKarat) : null,
+    tunch: variant.tunch === "" ? null : Number(variant.tunch),
+    weightGrams: variant.weightGrams ? Number(variant.weightGrams) : null,
+    minimumOrderQuantity: 1,
+    attributes: variant.attributes ?? null,
+    attributeValueIds: variant.attributeValueIds ?? [],
+    ...(!variant.id
+      ? {
+          ...(variant.basePrice !== "" ? { basePrice: Number(variant.basePrice) } : {}),
+          openingStock: Number(variant.openingStock || 0),
+          reorderLevel: Number(variant.reorderLevel || 0),
+        }
+      : {}),
+  });
+
+  const payload = (status, variantsOverride) => ({
     name: form.name,
-    designCode: form.designCode,
+    designCode: form.designCode || null,
     description: form.description || null,
     status,
+    productType: form.productType,
     metalId: Number(form.metalId),
     categoryMappings: form.categoryIds.map((categoryId, index) => ({
       categoryId: Number(categoryId),
       isPrimary: categoryId === form.primaryCategoryId,
       sortOrder: index,
     })),
-    jewelryAttributes: {
-      purity: form.purity || null,
-      karat: form.karat ? Number(form.karat) : null,
-    },
-    variants: [
-      {
-        ...(form.variantId ? { id: form.variantId } : {}),
-        sku: form.sku,
-        name: form.variantName || null,
-        purity: form.purity || null,
-        karat: form.karat ? Number(form.karat) : null,
-        tunch: form.tunch === "" ? null : Number(form.tunch),
-        weightGrams: form.weightGrams ? Number(form.weightGrams) : null,
-        minimumOrderQuantity: Number(form.minimumOrderQuantity || 1),
-        ...(!editing && form.basePrice !== "" ? { basePrice: Number(form.basePrice) } : {}),
-        ...(!editing ? { openingStock: Number(form.openingStock || 0) } : {}),
-        ...(!editing ? { reorderLevel: Number(form.reorderLevel || 0) } : {}),
-      },
-    ],
+    variants: (variantsOverride ?? variants).map(buildVariantPayload),
   });
+
+  const MAX_SKU_RETRIES = 5;
+
+  const isSkuConflict = (requestError) => {
+    const apiError = getApiError(requestError);
+    return (
+      apiError.code === "DUPLICATE_RESOURCE" &&
+      apiError.details.some((detail) => /sku/i.test(detail))
+    );
+  };
+
+  const regenerateNewVariantSkus = (list) =>
+    list.map((variant) => {
+      if (variant.id) return variant;
+      const sequence = skuCounterRef.current;
+      skuCounterRef.current += 1;
+      return {
+        ...variant,
+        skuSequence: sequence,
+        sku: generateSku({ metalCode: selectedMetal?.code, categoryName: skuCategoryName, sequence }),
+      };
+    });
 
   const save = async (status = form.status) => {
     setSaving(true);
     setError(null);
+    let workingVariants = variants;
     try {
-      const response = editing
-        ? await productService.update(id, payload(status))
-        : await productService.create(payload(status));
+      let response;
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          response = editing
+            ? await productService.update(id, payload(status, workingVariants))
+            : await productService.create(payload(status, workingVariants));
+          break;
+        } catch (requestError) {
+          if (attempt >= MAX_SKU_RETRIES - 1 || !isSkuConflict(requestError)) throw requestError;
+          workingVariants = regenerateNewVariantSkus(workingVariants);
+        }
+      }
+      if (workingVariants !== variants) setVariants(workingVariants);
       const product = response.data;
+
       if (editing && removedImageIds.length) {
         for (const imageId of removedImageIds) {
           await productService.removeImage(product.id, imageId);
         }
       }
+      for (const variant of workingVariants) {
+        for (const imageId of variant.removedImageIds) {
+          await productService.removeImage(product.id, imageId);
+        }
+      }
+
       if (imageFiles.length) {
         const uploaded = await mediaService.upload(
           imageFiles.map((entry) => entry.file),
-          {
-            folder: "products",
-            ownerType: "PRODUCT",
-            ownerId: product.id,
-          },
+          { folder: "products", ownerType: "PRODUCT", ownerId: product.id },
         );
         await productService.addImages(product.id, {
           images: (uploaded.data ?? []).map((media, index) => ({
@@ -646,6 +897,26 @@ export function CreateProductPage() {
           })),
         });
       }
+
+      for (const variant of workingVariants) {
+        if (!variant.imageFiles.length) continue;
+        const savedVariant = product.variants.find((row) => row.sku === variant.sku);
+        if (!savedVariant) continue;
+        const uploaded = await mediaService.upload(
+          variant.imageFiles.map((entry) => entry.file),
+          { folder: "products", ownerType: "PRODUCT_VARIANT", ownerId: savedVariant.id },
+        );
+        await productService.addImages(product.id, {
+          images: (uploaded.data ?? []).map((media, index) => ({
+            mediaId: media.id,
+            productVariantId: savedVariant.id,
+            altText: variant.name || form.name,
+            isPrimary: false,
+            displayOrder: variant.existingImages.length + index,
+          })),
+        });
+      }
+
       navigate("/products");
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
@@ -659,21 +930,8 @@ export function CreateProductPage() {
     else setStep((value) => value + 1);
   };
 
-  const selectedMetal = options.metals.find((metal) => String(metal.id) === form.metalId);
-  const visibleCategories = useMemo(() => {
-    if (!form.metalId) return [];
-    if (categoryScope === CATEGORY_SCOPE_ALL) return options.categories;
-    return options.categories.filter(
-      (category) => !category.metalId || String(category.metalId) === String(form.metalId),
-    );
-  }, [categoryScope, form.metalId, options.categories]);
-  const selectedCategories = form.categoryIds
-    .map((categoryId) => options.categories.find((category) => String(category.id) === categoryId))
-    .filter(Boolean);
-  const selectedPrimaryCategory = selectedCategories.find(
-    (category) => String(category.id) === form.primaryCategoryId,
-  );
   const totalImageCount = existingImages.length + imageFiles.length;
+  const isVariable = form.productType === "VARIABLE";
 
   return (
     <div className="page-stack">
@@ -703,6 +961,9 @@ export function CreateProductPage() {
             </button>
           ))}
         </div>
+        <div className="product-steps-bar" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={steps.length}>
+          <span style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
+        </div>
         <div className="product-wizard__body">
           <div className="product-wizard__heading">
             <div>
@@ -719,11 +980,35 @@ export function CreateProductPage() {
 
           {step === 0 && (
             <div className="product-form-grid">
-              <Field label="Product Name" required>
-                <input value={form.name} onChange={setValue("name")} />
+              <div className="product-status-panel product-field--full">
+                <span>
+                  <strong>Product availability</strong>
+                  <small>
+                    Active products can be ordered by shopkeepers. Use Save Draft for unfinished
+                    products.
+                  </small>
+                </span>
+                {["OUT_OF_STOCK", "ARCHIVED"].includes(form.status) ? (
+                  <StatusBadge status={form.status.replaceAll("_", " ")} />
+                ) : (
+                  <StatusToggle
+                    activeLabel="Active"
+                    checked={form.status === "ACTIVE"}
+                    inactiveLabel={form.status === "DRAFT" ? "Draft" : "Inactive"}
+                    onChange={(active) =>
+                      setForm((current) => ({
+                        ...current,
+                        status: active ? "ACTIVE" : "INACTIVE",
+                      }))
+                    }
+                  />
+                )}
+              </div>
+              <Field label="Product Name" required hint="Shown to shopkeepers and customers everywhere.">
+                <input placeholder="e.g. Floral Gold Necklace" value={form.name} onChange={setValue("name")} />
               </Field>
-              <Field label="Design Code" required>
-                <input value={form.designCode} onChange={setValue("designCode")} />
+              <Field label="Design Code" hint="Your internal reference code. Leave blank if you don't use one.">
+                <input placeholder="e.g. RNG-001" value={form.designCode} onChange={setValue("designCode")} />
               </Field>
               <Field label="Metal" required>
                 <select value={form.metalId} onChange={setMetal}>
@@ -767,129 +1052,103 @@ export function CreateProductPage() {
                 )}
               </div>
               <Field label="Description" className="product-field--full">
-                <textarea rows="5" value={form.description} onChange={setValue("description")} />
+                <textarea
+                  placeholder="Describe the craftsmanship, occasion, or styling details…"
+                  rows="5"
+                  value={form.description}
+                  onChange={setValue("description")}
+                />
               </Field>
-              <div className="product-status-panel">
-                <span>
-                  <strong>Product availability</strong>
-                  <small>
-                    Active products can be ordered by shopkeepers. Use Save Draft for unfinished
-                    products.
-                  </small>
-                </span>
-                {["OUT_OF_STOCK", "ARCHIVED"].includes(form.status) ? (
-                  <StatusBadge status={form.status.replaceAll("_", " ")} />
-                ) : (
-                  <StatusToggle
-                    activeLabel="Active"
-                    checked={form.status === "ACTIVE"}
-                    inactiveLabel={form.status === "DRAFT" ? "Draft" : "Inactive"}
-                    onChange={(active) =>
-                      setForm((current) => ({
-                        ...current,
-                        status: active ? "ACTIVE" : "INACTIVE",
-                      }))
-                    }
-                  />
-                )}
-              </div>
             </div>
           )}
 
           {step === 1 && (
-            <div className="product-form-grid">
-              <Field label="SKU" required>
-                <input value={form.sku} onChange={setValue("sku")} />
-              </Field>
-              <Field label="Variant name">
-                <input value={form.variantName} onChange={setValue("variantName")} />
-              </Field>
-              <Field label="Tunch">
-                <input
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  type="number"
-                  value={form.tunch}
-                  onChange={setTunch}
-                />
-              </Field>
-              <Field label="Purity / Karat">
-                <input readOnly placeholder="Calculated automatically" value={form.purity} />
-              </Field>
-              <Field label="Weight (grams)">
-                <input
-                  min="0"
-                  step="0.001"
-                  type="number"
-                  value={form.weightGrams}
-                  onChange={setValue("weightGrams")}
-                />
-              </Field>
-              <Field label="Minimum order quantity" required>
-                <input
-                  min="0.001"
-                  step="0.001"
-                  type="number"
-                  value={form.minimumOrderQuantity}
-                  onChange={setValue("minimumOrderQuantity")}
-                />
-              </Field>
-            </div>
-          )}
-
-          {step === 2 && (
             <div className="product-step-sections">
               <section className="product-step-section">
                 <div className="product-step-section__heading">
                   <div>
-                    <h3>Pricing & inventory</h3>
-                    <p>Set the opening commercial values for this product.</p>
+                    <h3>Product type</h3>
+                    <p>Simple products have one SKU. Variable products generate multiple SKUs from options.</p>
+                  </div>
+                </div>
+                <div className="product-type-cards" role="radiogroup" aria-label="Product type">
+                  <button
+                    aria-checked={!isVariable}
+                    className={`product-type-card ${!isVariable ? "is-active" : ""}`}
+                    role="radio"
+                    type="button"
+                    onClick={() => setProductType("SIMPLE")}
+                  >
+                    <Package size={20} />
+                    <strong>Simple product</strong>
+                    <span>One SKU, one price, one stock count.</span>
+                  </button>
+                  <button
+                    aria-checked={isVariable}
+                    className={`product-type-card ${isVariable ? "is-active" : ""}`}
+                    role="radio"
+                    type="button"
+                    onClick={() => setProductType("VARIABLE")}
+                  >
+                    <Layers size={20} />
+                    <strong>Variable product</strong>
+                    <span>Multiple SKUs generated from options like Size or Color.</span>
+                  </button>
+                </div>
+
+                {isVariable && (
+                  <VariantOptionsBuilder
+                    attributeCatalog={attributeCatalog}
+                    loadingAttributes={attributesLoading}
+                    selectedRows={selectedAttributeRows}
+                    onChange={setSelectedAttributeRows}
+                    onGenerate={generateVariants}
+                    onAddValue={addAttributeValue}
+                  />
+                )}
+              </section>
+
+              <section className="product-step-section">
+                <div className="product-step-section__heading">
+                  <div>
+                    <h3>{isVariable ? "Variants" : "Pricing & inventory"}</h3>
+                    <p>
+                      {isVariable
+                        ? "Each generated variant has its own SKU, pricing, and stock."
+                        : "Set the opening commercial values for this product."}
+                    </p>
                   </div>
                   <Boxes size={18} />
                 </div>
-                <div className="product-form-grid product-form-grid--compact">
-                  <Field label="Base price (INR)" required={!editing}>
-                    <input
-                      disabled={editing}
-                      min="0"
-                      step="0.01"
-                      type="number"
-                      value={form.basePrice}
-                      onChange={setValue("basePrice")}
+                <div className="variant-list">
+                  {variants.map((variant) => (
+                    <VariantCard
+                      key={variant._key}
+                      variant={variant}
+                      collapsible={isVariable}
+                      expanded={!isVariable || variant.expanded}
+                      showAttributes={isVariable}
+                      showRemove={isVariable && !variant.id}
+                      showImages={isVariable}
+                      onToggleExpand={() => toggleVariantExpanded(variant._key)}
+                      onFieldChange={(field, value, extra) =>
+                        updateVariant(variant._key, { [field]: value, ...extra })
+                      }
+                      onTunchChange={(tunch) => setVariantTunch(variant._key, tunch)}
+                      onRemove={() => removeVariant(variant._key)}
+                      onAddImages={(files) => addVariantImages(variant._key, files)}
+                      onRemoveNewImage={(imageId) => removeVariantNewImage(variant._key, imageId)}
+                      onRemoveExistingImage={(imageId) =>
+                        removeVariantExistingImage(variant._key, imageId)
+                      }
                     />
-                  </Field>
-                  <Field label="Opening stock" required={!editing}>
-                    <input
-                      disabled={editing}
-                      min="0"
-                      step="0.001"
-                      type="number"
-                      value={form.openingStock}
-                      onChange={setValue("openingStock")}
-                    />
-                  </Field>
-                  <Field label="Low stock threshold" required={!editing}>
-                    <input
-                      disabled={editing}
-                      min="0"
-                      step="0.001"
-                      type="number"
-                      value={form.reorderLevel}
-                      onChange={setValue("reorderLevel")}
-                    />
-                  </Field>
+                  ))}
+                  {isVariable && !variants.length && (
+                    <p className="wizard-note">
+                      Add options above and click Generate Variants to build SKUs.
+                    </p>
+                  )}
                 </div>
-                {editing ? (
-                  <div className="wizard-note">
-                    Existing pricing and stock are changed through their dedicated modules to
-                    preserve ledger and movement history.
-                  </div>
-                ) : (
-                  <div className="wizard-note">
-                    Advanced price-group rules and shopkeeper overrides remain managed from Pricing.
-                  </div>
-                )}
               </section>
 
               <section className="product-step-section">
@@ -978,7 +1237,7 @@ export function CreateProductPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div className="product-review">
               <div className="product-review__hero">
                 <span>
@@ -988,13 +1247,20 @@ export function CreateProductPage() {
                   <small>Ready to save</small>
                   <h3>{form.name || "Untitled product"}</h3>
                   <p>
-                    {form.designCode || "No design code"} · {form.sku || "No SKU"}
+                    {form.designCode || "No design code"} · {variants.length} variant
+                    {variants.length === 1 ? "" : "s"}
                   </p>
                 </div>
               </div>
               <div className="product-review__sections">
                 <section>
-                  <h4>Product</h4>
+                  <div className="product-review__section-head">
+                    <h4>Product</h4>
+                    <button type="button" onClick={() => setStep(0)}>
+                      <Pencil size={11} />
+                      Edit
+                    </button>
+                  </div>
                   <dl>
                     <div>
                       <dt>Metal</dt>
@@ -1016,50 +1282,53 @@ export function CreateProductPage() {
                       <dt>Status</dt>
                       <dd>{form.status}</dd>
                     </div>
-                  </dl>
-                </section>
-                <section>
-                  <h4>Jewelry</h4>
-                  <dl>
                     <div>
-                      <dt>Tunch</dt>
-                      <dd>{form.tunch || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Purity / Karat</dt>
-                      <dd>{form.purity || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Weight</dt>
-                      <dd>{form.weightGrams ? `${form.weightGrams} g` : "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>MOQ</dt>
-                      <dd>{form.minimumOrderQuantity}</dd>
+                      <dt>Type</dt>
+                      <dd>{isVariable ? "Variable" : "Simple"}</dd>
                     </div>
                   </dl>
                 </section>
-                <section>
-                  <h4>Commerce</h4>
-                  <dl>
-                    <div>
-                      <dt>Base price</dt>
-                      <dd>{editing ? "Managed in Pricing" : formatMoney(form.basePrice)}</dd>
+                {variants.map((variant) => (
+                  <section key={variant._key}>
+                    <div className="product-review__section-head">
+                      <h4>{variant.name || "Variant"}</h4>
+                      <button type="button" onClick={() => setStep(1)}>
+                        <Pencil size={11} />
+                        Edit
+                      </button>
                     </div>
-                    <div>
-                      <dt>Opening stock</dt>
-                      <dd>{editing ? "Managed in Inventory" : form.openingStock || "0"}</dd>
-                    </div>
-                    <div>
-                      <dt>Low stock alert</dt>
-                      <dd>{editing ? "Managed in Inventory" : form.reorderLevel || "0"}</dd>
-                    </div>
-                    <div>
-                      <dt>Images</dt>
-                      <dd>{totalImageCount}</dd>
-                    </div>
-                  </dl>
-                </section>
+                    <dl>
+                      <div>
+                        <dt>SKU</dt>
+                        <dd>{variant.sku || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Purity / Karat</dt>
+                        <dd>{variant.purity || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Public Purity / Karat</dt>
+                        <dd>{variant.publicPurity || "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Weight</dt>
+                        <dd>{variant.weightGrams ? `${variant.weightGrams} g` : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt>Base price</dt>
+                        <dd>{variant.id ? "Managed in Pricing" : formatMoney(variant.basePrice)}</dd>
+                      </div>
+                      <div>
+                        <dt>Opening stock</dt>
+                        <dd>{variant.id ? "Managed in Inventory" : variant.openingStock || "0"}</dd>
+                      </div>
+                      <div>
+                        <dt>Low stock alert</dt>
+                        <dd>{variant.id ? "Managed in Inventory" : variant.reorderLevel || "0"}</dd>
+                      </div>
+                    </dl>
+                  </section>
+                ))}
               </div>
               {totalImageCount > 0 && (
                 <div className="product-review__images">

@@ -79,6 +79,62 @@ export const rbacService = {
   },
 };
 export const metalService = createResourceService("/admin/metals");
+export const metalRateService = {
+  async list() {
+    const { data } = await apiClient.get("/admin/metal-rates");
+    return data;
+  },
+  async upsert(metalId, payload) {
+    const { data } = await apiClient.put(`/admin/metal-rates/${metalId}`, payload);
+    return data;
+  },
+};
+export const homepageService = {
+  async list(params = {}) {
+    const { data } = await apiClient.get("/admin/homepages", { params });
+    return data;
+  },
+  async get(id) {
+    const { data } = await apiClient.get(`/admin/homepages/${id}`);
+    return data;
+  },
+  async create(payload) {
+    const { data } = await apiClient.post("/admin/homepages", payload);
+    return data;
+  },
+  async update(id, payload) {
+    const { data } = await apiClient.patch(`/admin/homepages/${id}`, payload);
+    return data;
+  },
+  async publish(id) {
+    const { data } = await apiClient.post(`/admin/homepages/${id}/publish`);
+    return data;
+  },
+  async versions(id) {
+    const { data } = await apiClient.get(`/admin/homepages/${id}/versions`);
+    return data;
+  },
+  async addSection(id, payload) {
+    const { data } = await apiClient.post(`/admin/homepages/${id}/sections`, payload);
+    return data;
+  },
+  async updateSection(id, sectionId, payload) {
+    const { data } = await apiClient.patch(`/admin/homepages/${id}/sections/${sectionId}`, payload);
+    return data;
+  },
+  async removeSection(id, sectionId) {
+    const { data } = await apiClient.delete(`/admin/homepages/${id}/sections/${sectionId}`);
+    return data;
+  },
+  async duplicateSection(id, sectionId) {
+    const { data } = await apiClient.post(`/admin/homepages/${id}/sections/${sectionId}/duplicate`);
+    return data;
+  },
+  async reorderSections(id, order) {
+    const { data } = await apiClient.put(`/admin/homepages/${id}/sections/reorder`, { order });
+    return data;
+  },
+};
 export const categoryService = {
   ...createResourceService("/admin/categories"),
   async tree(params = {}) {

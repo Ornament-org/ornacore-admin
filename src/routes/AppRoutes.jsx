@@ -32,6 +32,14 @@ const CatalogPage = loadNamed(
   () => import("../features/catalog/pages/CatalogPage.jsx"),
   "CatalogPage",
 );
+const MetalRatesPage = loadNamed(
+  () => import("../features/metal-rates/pages/MetalRatesPage.jsx"),
+  "MetalRatesPage",
+);
+const HomepageManagementPage = loadNamed(
+  () => import("../features/cms/pages/HomepageManagementPage.jsx"),
+  "HomepageManagementPage",
+);
 const ProductsPage = loadNamed(
   () => import("../features/products/pages/ProductsPage.jsx"),
   "ProductsPage",
@@ -111,6 +119,8 @@ export function AppRoutes() {
             />
 
             <Route path="/catalog/metals" element={<CatalogPage title="Metals" />} />
+            <Route path="/catalog/metal-rates" element={<MetalRatesPage />} />
+            <Route path="/cms/homepage" element={<HomepageManagementPage />} />
             <Route path="/catalog/categories" element={<CatalogPage title="Categories" />} />
             <Route
               path="/catalog/subcategories"

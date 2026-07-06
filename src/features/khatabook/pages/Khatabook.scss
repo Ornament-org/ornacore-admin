@@ -201,6 +201,44 @@
   &:hover {
     background: var(--surface-soft);
   }
+
+  &:focus-visible {
+    outline: 2px solid #d9a44b;
+    outline-offset: -2px;
+  }
+}
+
+.khatabook-order__share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--surface-soft);
+    color: var(--ink);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+}
+
+.khatabook-order__share-spinner {
+  animation: khatabook-share-spin 0.8s linear infinite;
+}
+
+@keyframes khatabook-share-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 // Date badge
@@ -1683,12 +1721,40 @@
 }
 
 @media (max-width: 760px) {
-  .khatabook-filters,
   .khatabook-create__topgrid,
   .khatabook-create__bottomgrid,
   .khatabook-create__twocol,
   .khatabook-create__item {
     grid-template-columns: 1fr;
+  }
+
+  .khatabook-filters {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "search search"
+      "metal  filter"
+      "sort   sort";
+    gap: 8px;
+  }
+
+  .khatabook-search {
+    grid-area: search;
+  }
+
+  .khatabook-filters > select:not([aria-label]) {
+    grid-area: metal;
+    width: 100%;
+  }
+
+  .khatabook-filter-button {
+    grid-area: filter;
+    white-space: nowrap;
+    padding: 0 14px;
+  }
+
+  .khatabook-filters > select[aria-label="Sort orders"] {
+    grid-area: sort;
+    width: 100%;
   }
 
   .khatabook-create__headline,

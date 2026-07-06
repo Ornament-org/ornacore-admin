@@ -122,7 +122,7 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
       return {
         title: `${row.orderNumber ?? "Order"} — delivery`,
         detail: Number(row.debitFine ?? 0) > 0
-          ? `${formatQuantity(row.debitFine)} gm fine`
+          ? `${formatQuantity(row.debitFine)} fine`
           : row.description,
       };
     }
@@ -133,7 +133,7 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
         detail: [
           row.cashAmount ? `₹ ${formatMoney(row.cashAmount)}` : null,
           row.metalRate ? `@ ${formatMoney(row.metalRate)}/10gm` : null,
-          row.fineCredit ? `→ ${formatQuantity(row.fineCredit)} gm fine` : null,
+          row.fineCredit ? `→ ${formatQuantity(row.fineCredit)} fine` : null,
         ].filter(Boolean).join("  "),
       };
     }
@@ -142,7 +142,7 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
       return {
         title: "Metal collection",
         detail: row.receivedQuantity
-          ? `${formatQuantity(row.receivedQuantity)} gm received`
+          ? `${formatQuantity(row.receivedQuantity)}  received`
           : row.description,
       };
     }
@@ -309,6 +309,7 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
             onViewLedger={openLedger}
             onAddMetalCollection={handleAddMetalCollection}
             onAddCashCollection={handleAddCashCollection}
+            shopName={shopName}
           />
 
           {ledgerOrder && ledgerPanel}
