@@ -6,6 +6,7 @@ import {
   Pencil,
   Star,
   Trash2,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { StatusToggle } from "../../../components/common/StatusToggle.jsx";
@@ -20,13 +21,29 @@ import "./CategoryTreeView.scss";
 
 const ALL_METALS_FILTER_ID = "__all__";
 
-function TreeNode({ category, level = 0, onEdit, onDelete, onStatusChange, setStatusError }) {
+function TreeNode({
+  category,
+  level = 0,
+  onEdit,
+  onDelete,
+  onStatusChange,
+  setStatusError,
+  selectedIds,
+  onToggleSelect,
+}) {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = category.children && category.children.length > 0;
 
   return (
     <div className="category-tree-node">
       <div className="category-tree-node__content" style={{ paddingLeft: `${level * 24 + 12}px` }}>
+        <input
+          aria-label={`Select ${category.name}`}
+          checked={selectedIds.has(category.id)}
+          className="category-tree-node__checkbox"
+          type="checkbox"
+          onChange={() => onToggleSelect(category.id)}
+        />
         {hasChildren ? (
           <button
             aria-label={expanded ? "Collapse category" : "Expand category"}
@@ -116,6 +133,8 @@ function TreeNode({ category, level = 0, onEdit, onDelete, onStatusChange, setSt
               onDelete={onDelete}
               onStatusChange={onStatusChange}
               setStatusError={setStatusError}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
             />
           ))}
         </div>
@@ -134,6 +153,48 @@ export function CategoryTreeView({
   setStatusError,
 }) {
   const [selectedMetalId, setSelectedMetalId] = useState(() => getPersistedMetalId(metals));
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
+
+  const toggleSelect = (id) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedIds.size} selected categor${selectedIds.size === 1 ? "y" : "ies"}? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBulkDeleting(true);
+    setBulkMessage("");
+    try {
+      const response = await categoryService.bulkRemove([...selectedIds]);
+      const skipped = response?.data?.skipped ?? [];
+      if (skipped.length > 0) {
+        setBulkMessage(
+          `${skipped.length} categor${skipped.length === 1 ? "y" : "ies"} could not be deleted: ${skipped
+            .map((entry) => `${entry.name ?? `#${entry.id}`} (${entry.reason})`)
+            .join(", ")}`,
+        );
+      }
+      setSelectedIds(new Set());
+      onRefresh?.();
+    } catch (requestError) {
+      setBulkMessage(apiErrorMessage(requestError));
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const metalOptions = useMemo(() => getActiveMetalOptions(metals), [metals]);
   const activeMetalId =
@@ -183,6 +244,29 @@ export function CategoryTreeView({
   return (
     <div className="category-tree">
       {statusError && <div className="category-tree__error">{statusError}</div>}
+      {bulkMessage && <div className="category-tree__error">{bulkMessage}</div>}
+      {selectedIds.size > 0 && (
+        <div className="category-tree__bulk-bar">
+          <span>{selectedIds.size} selected</span>
+          <div className="category-tree__bulk-actions">
+            <button
+              className="category-tree__bulk-clear"
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X size={14} /> Clear
+            </button>
+            <button
+              className="button button--danger"
+              disabled={bulkDeleting}
+              type="button"
+              onClick={handleBulkDelete}
+            >
+              <Trash2 size={14} /> {bulkDeleting ? "Deleting…" : "Delete Selected"}
+            </button>
+          </div>
+        </div>
+      )}
       <div
         className="category-tree__filters"
         role="tablist"
@@ -239,6 +323,8 @@ export function CategoryTreeView({
               onDelete={onDelete}
               onStatusChange={onRefresh}
               setStatusError={setStatusError}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
             />
           ))}
         </div>

@@ -31,13 +31,6 @@ export const navigationGroups = [
         label: "Shopkeepers",
         icon: Store,
         path: "/shopkeepers",
-        children: [
-          { label: "All Shopkeepers", path: "/shopkeepers" },
-          { label: "Pending Approval", path: "/shopkeepers/pending" },
-          { label: "Approved", path: "/shopkeepers/approved" },
-          { label: "Rejected", path: "/shopkeepers/rejected" },
-          { label: "Suspended", path: "/shopkeepers/suspended" },
-        ],
       },
       {
         label: "Metals",

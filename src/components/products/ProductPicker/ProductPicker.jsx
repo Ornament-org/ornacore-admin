@@ -9,11 +9,15 @@ const primaryImageOf = (product) =>
   product.images?.[0]?.media?.secureUrl ??
   null;
 
-// Product multi-select used by product-type Collections. Owns its own metal
-// switcher (rather than requiring the caller to already know a metal), so it
-// works the same whether the collection itself is scoped to one metal or to
-// "All Metals" — pick a metal here, check off any of its products, switch
-// metals and keep going; picks accumulate across metals into one list.
+// Product picker used by product-type Collections (multi-select) and by
+// anything that needs to link to a single product, e.g. a banner's "Link
+// to a product" field (single-select via `multiple={false}` — clicking a
+// row confirms and closes immediately instead of requiring a "Use Selected"
+// step). Owns its own metal switcher (rather than requiring the caller to
+// already know a metal), so it works the same whether the parent record is
+// scoped to one metal or to "All Metals" — pick a metal here, check off any
+// of its products, switch metals and keep going; picks accumulate across
+// metals into one list (multi-select mode only).
 //
 // Selections are tracked as a Map of full product objects (not just IDs),
 // keyed by id, so a product picked before a search/metal change stays
@@ -25,6 +29,7 @@ export function ProductPicker({
   metals = [],
   initialMetalId,
   initialSelectedProducts = [],
+  multiple = true,
 }) {
   const [browseMetalId, setBrowseMetalId] = useState("");
   const [search, setSearch] = useState("");
@@ -56,6 +61,11 @@ export function ProductPicker({
   if (!open) return null;
 
   const toggle = (product) => {
+    if (!multiple) {
+      onConfirm([product]);
+      onClose();
+      return;
+    }
     setSelectedMap((current) => {
       const next = new Map(current);
       const key = String(product.id);
@@ -85,7 +95,7 @@ export function ProductPicker({
   };
 
   return (
-    <Modal open={open} title="Add Products" onClose={onClose} size="lg">
+    <Modal open={open} title={multiple ? "Add Products" : "Choose a Product"} onClose={onClose} size="lg">
       <div className="product-picker">
         <div className="product-picker__toolbar">
           <select
@@ -109,7 +119,7 @@ export function ProductPicker({
           </div>
         </div>
 
-        {products.length > 0 && (
+        {multiple && products.length > 0 && (
           <label className="product-picker__select-all">
             <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
             Select all {products.length} shown
@@ -121,7 +131,7 @@ export function ProductPicker({
             <div className="product-picker__empty">Loading…</div>
           ) : products.length ? (
             products.map((product) => {
-              const checked = selectedMap.has(String(product.id));
+              const checked = multiple && selectedMap.has(String(product.id));
               return (
                 <button
                   type="button"
@@ -129,7 +139,9 @@ export function ProductPicker({
                   className={checked ? "product-picker__row is-selected" : "product-picker__row"}
                   onClick={() => toggle(product)}
                 >
-                  <span className="product-picker__checkbox">{checked ? <Check size={13} /> : null}</span>
+                  {multiple && (
+                    <span className="product-picker__checkbox">{checked ? <Check size={13} /> : null}</span>
+                  )}
                   <span className="product-picker__thumb">
                     {primaryImageOf(product) ? (
                       <img src={primaryImageOf(product)} alt="" />
@@ -146,17 +158,19 @@ export function ProductPicker({
           )}
         </div>
 
-        <footer className="product-picker__footer">
-          <span>{selectedMap.size ? `${selectedMap.size} selected` : "Nothing selected"}</span>
-          <div>
-            <button type="button" className="product-picker__cancel" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="button" className="product-picker__confirm" onClick={confirm}>
-              Use Selected
-            </button>
-          </div>
-        </footer>
+        {multiple && (
+          <footer className="product-picker__footer">
+            <span>{selectedMap.size ? `${selectedMap.size} selected` : "Nothing selected"}</span>
+            <div>
+              <button type="button" className="product-picker__cancel" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="button" className="product-picker__confirm" onClick={confirm}>
+                Use Selected
+              </button>
+            </div>
+          </footer>
+        )}
       </div>
     </Modal>
   );

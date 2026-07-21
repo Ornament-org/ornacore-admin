@@ -17,19 +17,13 @@ import { MetalCreditLimitEditor } from "../components/MetalCreditLimitEditor.jsx
 import { ShopkeeperTable } from "../components/ShopkeeperTable.jsx";
 import { ShopkeeperToolbar } from "../components/ShopkeeperToolbar.jsx";
 import { StatCard } from "../components/StatCard.jsx";
+import { StatusTabs } from "../components/StatusTabs.jsx";
 import { useShopkeeperStats } from "../hooks/useShopkeeperData.js";
 import { invalidateAll } from "../store/shopkeeperSlice.js";
 import { useDispatch } from "react-redux";
 import "./ShopkeepersPage.scss";
 
 const PAGE_SIZE = 20;
-
-const STATUS_BY_TITLE = {
-  "Pending Approval": "PENDING_REVIEW",
-  "Approved Shopkeepers": "APPROVED",
-  "Rejected Shopkeepers": "REJECTED",
-  "Suspended Shopkeepers": "SUSPENDED",
-};
 
 const SORT_PARAM = {
   recent: "-createdAt",
@@ -59,13 +53,12 @@ const mapShopkeepers = (rows) =>
     };
   });
 
-export function ShopkeepersPage({ title = "All Shopkeepers" }) {
+export function ShopkeepersPage() {
   const navigate = useNavigate();
-  const titleStatus = STATUS_BY_TITLE[title];
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [activeStatus, setActiveStatus] = useState("");
   const [sort, setSort] = useState("recent");
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,13 +90,9 @@ export function ShopkeepersPage({ title = "All Shopkeepers" }) {
       pageSize: PAGE_SIZE,
       sort: SORT_PARAM[sort],
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
-      ...(titleStatus
-        ? { status: titleStatus }
-        : statusFilter
-          ? { status: statusFilter }
-          : {}),
+      ...(activeStatus ? { status: activeStatus } : {}),
     }),
-    [page, debouncedSearch, sort, titleStatus, statusFilter],
+    [page, debouncedSearch, sort, activeStatus],
   );
 
   const { rows, loading, meta } = useResourceData({
@@ -237,11 +226,16 @@ export function ShopkeepersPage({ title = "All Shopkeepers" }) {
     block: "Block shopkeeper",
   }[modal.type] ?? "Shopkeeper action";
 
+  const handleStatusTab = (status) => {
+    setActiveStatus(status);
+    setPage(1);
+  };
+
   return (
     <div className="page-stack">
       <PageHeader
         eyebrow="Shopkeepers"
-        title={title}
+        title="All Shopkeepers"
         description="Manage and monitor your B2B shopkeeper relationships."
         actions={
           <>
@@ -261,20 +255,16 @@ export function ShopkeepersPage({ title = "All Shopkeepers" }) {
         ))}
       </div>
 
+      <StatusTabs value={activeStatus} onChange={handleStatusTab} disabled={loading} />
+
       <div className="sk-list-card">
         <div className="sk-list-card__toolbar">
           <ShopkeeperToolbar
             search={search}
-            status={statusFilter}
             sort={sort}
             onSearch={setSearch}
-            onStatus={(v) => {
-              setStatusFilter(v);
-              setPage(1);
-            }}
             onSort={setSort}
             onRefresh={refresh}
-            hideStatusFilter={!!titleStatus}
           />
         </div>
         <ShopkeeperTable

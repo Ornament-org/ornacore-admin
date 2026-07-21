@@ -43,6 +43,10 @@
     &:hover {
       background: #fdfdfc;
     }
+
+    &--clickable {
+      cursor: pointer;
+    }
   }
 
   &__cell {

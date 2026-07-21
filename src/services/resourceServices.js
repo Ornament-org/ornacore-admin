@@ -137,11 +137,19 @@ export const categoryService = {
     const { data } = await apiClient.get("/admin/categories/tree", { params });
     return data;
   },
+  async bulkRemove(ids) {
+    const { data } = await apiClient.delete("/admin/categories/bulk", { data: { ids } });
+    return data;
+  },
 };
 export const productService = {
   ...createResourceService("/admin/products"),
   addImages: (id, payload) => apiClient.post(`/admin/products/${id}/images`, payload),
   removeImage: (id, imageId) => apiClient.delete(`/admin/products/${id}/images/${imageId}`),
+  async bulkRemove(ids) {
+    const { data } = await apiClient.delete("/admin/products/bulk", { data: { ids } });
+    return data;
+  },
 };
 export const collectionService = createResourceService("/admin/collections");
 export const bannerPlaceholderService = createResourceService("/admin/banner-placeholders");

@@ -2,6 +2,7 @@ import { Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CategoryMultiSelect } from "../../../components/categories/CategoryMultiSelect/CategoryMultiSelect.jsx";
 import { ImageUploadField } from "../../../components/forms/ImageUploadField/ImageUploadField.jsx";
+import { ProductLinkPicker } from "../../../components/products/ProductLinkPicker/ProductLinkPicker.jsx";
 import { ProductMultiSelect } from "../../../components/products/ProductMultiSelect/ProductMultiSelect.jsx";
 import { PreviewListPage } from "../../../components/common/PreviewListPage.jsx";
 import { ResourceFormModal } from "../../../components/common/ResourceFormModal.jsx";
@@ -408,7 +409,21 @@ export function CatalogPage({ title = "Metals" }) {
             />
           ),
         },
-        { name: "linkUrl", label: "Link URL", nullable: true, fullWidth: true },
+        {
+          name: "linkUrl",
+          label: "Link URL",
+          type: "custom",
+          nullable: true,
+          fullWidth: true,
+          render: ({ value, values, setValue }) => (
+            <ProductLinkPicker
+              value={value}
+              metals={metals}
+              metalId={values.metalId || ""}
+              onChange={setValue}
+            />
+          ),
+        },
         { name: "sortOrder", label: "Sort order", type: "number", min: 0, defaultValue: 0 },
         {
           name: "status",

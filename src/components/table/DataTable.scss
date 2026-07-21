@@ -105,6 +105,17 @@
   text-align: right !important;
 }
 
+.data-table__select {
+  width: 40px;
+
+  input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--gold);
+  }
+}
+
 .table-pagination {
   display: flex;
   align-items: center;
@@ -132,42 +143,129 @@
   font-weight: 800;
 }
 
-// Mobile responsive table styles
+// Mobile: the table stops being a table and each row becomes a self-contained
+// card — no more horizontal scrolling / squished columns. Each cell shows its
+// column label (from `data-label`) beside its value.
 @include respond-to-mobile {
   .data-table-wrap {
-    // Enable horizontal scroll with better UX
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    
-    &::-webkit-scrollbar {
-      height: 4px;
-    }
-    
-    &::-webkit-scrollbar-track {
-      background: var(--surface-soft);
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: var(--line-strong);
-      border-radius: 2px;
-    }
+    overflow-x: visible;
   }
 
   .data-table {
-    // Reduce minimum width for mobile
-    min-width: 600px;
+    display: block;
+    min-width: 0;
   }
 
-  .data-table th {
-    height: 36px;
-    padding: 0 10px;
-    font-size: 10px;
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table tbody {
+    display: block;
+  }
+
+  .data-table tbody tr {
+    position: relative;
+    display: block;
+    margin: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(35 30 22 / 6%);
+
+    &:hover {
+      background: #fff;
+    }
+
+    &.data-table__row--clickable:active {
+      background: #fbf8f2;
+    }
   }
 
   .data-table td {
-    height: 48px;
-    padding: 6px 10px;
-    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: auto;
+    padding: 8px 0;
+    border-bottom: 1px solid #f2eee7;
+    font-size: 13px;
+    text-align: right;
+
+    &::before {
+      content: attr(data-label);
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-align: left;
+    }
+  }
+
+  // Actions is the last <td> (absolute) — so the last in-flow data cell is
+  // the second-to-last child; drop its divider so the card ends cleanly.
+  .data-table td:nth-last-child(2) {
+    border-bottom: 0;
+  }
+
+  // The empty-state cell is a single full-width message, not a label:value
+  // pair — center it and drop the generated label.
+  .data-table__empty {
+    display: block;
+    height: auto;
+    padding: 40px 14px;
+    text-align: center;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  // First column (product / entity / shopkeeper name) leads the card: full
+  // width, left-aligned, no inline label, and reserves the top-right corner
+  // for the checkbox + 3-dot controls positioned there.
+  .data-table__cell--primary {
+    display: block;
+    padding: 0 72px 10px 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #eeeae3;
+    text-align: left;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  // Checkbox (bulk select) and the 3-dot menu float in the card's top-right
+  // rather than forming their own empty label rows.
+  .data-table__select {
+    position: absolute;
+    top: 12px;
+    right: 42px;
+    width: auto;
+    padding: 0;
+    border-bottom: 0;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  .data-table__actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: auto;
+    padding: 0;
+    border-bottom: 0;
+
+    &::before {
+      display: none;
+    }
   }
 
   .table-pagination {

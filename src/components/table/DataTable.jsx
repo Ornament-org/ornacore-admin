@@ -13,9 +13,14 @@ export function DataTable({
   onPageChange,
   onRowClick,
   renderContext,
+  selectable = false,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
 }) {
   const [openRow, setOpenRow] = useState(null);
   const menuRef = useRef(null);
+  const selectAllRef = useRef(null);
 
   useEffect(() => {
     const close = (event) => {
@@ -25,11 +30,29 @@ export function DataTable({
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  const allOnPageSelected = selectable && rows.length > 0 && rows.every((row) => selectedIds?.has(getRowKey(row)));
+  const someOnPageSelected = selectable && rows.some((row) => selectedIds?.has(getRowKey(row)));
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someOnPageSelected && !allOnPageSelected;
+  }, [someOnPageSelected, allOnPageSelected]);
+
   return (
     <div className="data-table-wrap">
       <table className="data-table">
         <thead>
           <tr>
+            {selectable && (
+              <th className="data-table__select">
+                <input
+                  aria-label="Select all rows on this page"
+                  checked={allOnPageSelected}
+                  ref={selectAllRef}
+                  type="checkbox"
+                  onChange={(event) => onToggleAll?.(event.target.checked)}
+                />
+              </th>
+            )}
             {columns.map((column) => (
               <th key={column.key} style={column.width ? { width: column.width } : undefined}>
                 {column.label}
@@ -48,8 +71,25 @@ export function DataTable({
                 className={onRowClick ? "data-table__row--clickable" : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
-                {columns.map((column) => (
-                  <td key={column.key}>
+                {selectable && (
+                  <td className="data-table__select" onClick={(event) => event.stopPropagation()}>
+                    <input
+                      aria-label="Select row"
+                      checked={selectedIds?.has(key) ?? false}
+                      type="checkbox"
+                      onChange={() => onToggleRow?.(key)}
+                    />
+                  </td>
+                )}
+                {columns.map((column, columnIndex) => (
+                  <td
+                    key={column.key}
+                    // `data-label`/`--primary` are consumed only by the mobile
+                    // card layout (DataTable.scss) — on desktop the table
+                    // renders exactly as before.
+                    data-label={column.label}
+                    className={columnIndex === 0 ? "data-table__cell--primary" : undefined}
+                  >
                     {column.render
                       ? column.render(row[column.key], row, renderContext)
                       : row[column.key]}
@@ -86,7 +126,7 @@ export function DataTable({
           })}
           {rows.length === 0 && (
             <tr>
-              <td className="data-table__empty" colSpan={columns.length + 1}>
+              <td className="data-table__empty" colSpan={columns.length + 1 + (selectable ? 1 : 0)}>
                 No records found.
               </td>
             </tr>

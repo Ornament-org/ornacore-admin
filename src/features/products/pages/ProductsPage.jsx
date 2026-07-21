@@ -99,18 +99,22 @@ export function ProductsPage({ title = "All Products" }) {
         label: "Status",
         render: (value, row, context) =>
           ["ACTIVE", "INACTIVE"].includes(value) ? (
-            <StatusToggle
-              checked={value === "ACTIVE"}
-              compact
-              onChange={async (active) => {
-                setStatusError("");
-                await productService.update(row.id, {
-                  status: active ? "ACTIVE" : "INACTIVE",
-                });
-                context?.refresh?.();
-              }}
-              onError={(requestError) => setStatusError(apiErrorMessage(requestError))}
-            />
+            // Toggling status must not also open the product — stop the click
+            // from bubbling up to the row's navigate handler.
+            <span onClick={(event) => event.stopPropagation()}>
+              <StatusToggle
+                checked={value === "ACTIVE"}
+                compact
+                onChange={async (active) => {
+                  setStatusError("");
+                  await productService.update(row.id, {
+                    status: active ? "ACTIVE" : "INACTIVE",
+                  });
+                  context?.refresh?.();
+                }}
+                onError={(requestError) => setStatusError(apiErrorMessage(requestError))}
+              />
+            </span>
           ) : (
             <StatusBadge status={value} />
           ),
@@ -149,6 +153,8 @@ export function ProductsPage({ title = "All Products" }) {
       mapRows={mapProducts}
       query={query}
       rowActions={rowActions}
+      onRowClick={(record) => navigate(`/products/${record.id}/edit`)}
+      bulkDeleteAction={productService.bulkRemove}
       externalError={statusError}
       filterTabs={metalFilterTabs}
       statusOptions={["DRAFT", "ACTIVE", "INACTIVE", "OUT_OF_STOCK"]}

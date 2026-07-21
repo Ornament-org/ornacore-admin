@@ -109,22 +109,6 @@ export function AppRoutes() {
             <Route path="/shopkeepers" element={<ShopkeepersPage />} />
             <Route path="/shopkeepers/:id" element={<ShopkeeperDetailsPage />} />
             <Route path="/shopkeepers/:shopkeeperId/payment" element={<AddReceivedPaymentPage />} />
-            <Route
-              path="/shopkeepers/pending"
-              element={<ShopkeepersPage title="Pending Approval" />}
-            />
-            <Route
-              path="/shopkeepers/approved"
-              element={<ShopkeepersPage title="Approved Shopkeepers" />}
-            />
-            <Route
-              path="/shopkeepers/rejected"
-              element={<ShopkeepersPage title="Rejected Shopkeepers" />}
-            />
-            <Route
-              path="/shopkeepers/suspended"
-              element={<ShopkeepersPage title="Suspended Shopkeepers" />}
-            />
 
             <Route path="/metals" element={<CatalogPage title="Metals" />} />
             <Route path="/metals/rates" element={<MetalRatesPage />} />

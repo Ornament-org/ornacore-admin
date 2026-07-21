@@ -4,14 +4,6 @@ import { IconButton } from "../../../components/common/IconButton.jsx";
 import { SearchInput } from "../../../components/common/SearchInput.jsx";
 import "./ShopkeeperToolbar.scss";
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "APPROVED", label: "Approved" },
-  { value: "PENDING_REVIEW", label: "Pending" },
-  { value: "REJECTED", label: "Rejected" },
-  { value: "SUSPENDED", label: "Suspended" },
-];
-
 const SORT_OPTIONS = [
   { value: "recent", label: "Recently Added" },
   { value: "oldest", label: "Oldest" },
@@ -19,16 +11,9 @@ const SORT_OPTIONS = [
   { value: "due_asc", label: "Lowest Due" },
 ];
 
-export function ShopkeeperToolbar({
-  search,
-  status,
-  sort,
-  onSearch,
-  onStatus,
-  onSort,
-  onRefresh,
-  hideStatusFilter = false,
-}) {
+// Status filtering now lives above this toolbar as StatusTabs — this only
+// handles search and sort.
+export function ShopkeeperToolbar({ search, sort, onSearch, onSort, onRefresh }) {
   return (
     <div className="sk-toolbar">
       <SearchInput
@@ -37,14 +22,6 @@ export function ShopkeeperToolbar({
         placeholder="Search shop name, owner, city, phone, shop ID…"
       />
       <div className="sk-toolbar__controls">
-        {!hideStatusFilter && (
-          <Dropdown
-            value={status}
-            onChange={onStatus}
-            options={STATUS_OPTIONS}
-            label="Status:"
-          />
-        )}
         <Dropdown
           value={sort}
           onChange={onSort}
