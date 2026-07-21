@@ -9,18 +9,18 @@
 
 .form-field__label {
   color: #52524d;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .form-field__control {
   display: flex;
-  min-height: 46px;
+  min-height: 34px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  padding: 0 13px;
+  border-radius: 6px;
+  padding: 0 10px;
   background: #fff;
   transition: 160ms ease;
 }
@@ -44,7 +44,7 @@
   flex: 1;
   border: 0;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .form-field__control input::placeholder {
@@ -53,12 +53,12 @@
 
 .form-field__error {
   color: var(--red);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .form-field__hint {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .field-action {
@@ -77,7 +77,7 @@
   }
 
   .form-field__label {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .form-field__control {
@@ -96,7 +96,7 @@
 
   .form-field__error,
   .form-field__hint {
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .field-action {

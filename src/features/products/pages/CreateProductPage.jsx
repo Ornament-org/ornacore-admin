@@ -1,20 +1,4 @@
-import {
-  Boxes,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  FolderTree,
-  Info,
-  Layers,
-  Package,
-  Pencil,
-  Plus,
-  Save,
-  Search,
-  Star,
-  X,
-} from "lucide-react";
+import { Check, ChevronDown, FolderTree, Layers, Package, Search, Star, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../../components/common/Button.jsx";
@@ -27,11 +11,14 @@ import { apiErrorMessage, getApiError } from "../../../services/apiClient.js";
 import {
   attributeService,
   categoryService,
-  mediaService,
   metalService,
   productService,
 } from "../../../services/resourceServices.js";
 import { calculateMetalPurityFromTunch } from "../../../utils/goldPurity.js";
+import { ProductLivePreviewCard } from "../components/ProductLivePreviewCard.jsx";
+import { ProductMediaGallery } from "../components/ProductMediaGallery.jsx";
+import { ProductQuickActionsCard } from "../components/ProductQuickActionsCard.jsx";
+import { ProductReadinessCard } from "../components/ProductReadinessCard.jsx";
 import { VariantCard } from "../components/VariantCard.jsx";
 import { VariantOptionsBuilder } from "../components/VariantOptionsBuilder.jsx";
 import {
@@ -42,14 +29,7 @@ import {
 } from "../utils/productVariants.js";
 import "../Products.scss";
 
-const steps = [
-  { label: "Product Details", icon: Info },
-  { label: "Variants & Pricing", icon: Boxes },
-  { label: "Review", icon: Check },
-];
-
 const MAX_PRODUCT_IMAGES = 10;
-const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const CATEGORY_SCOPE_METAL = "metal";
 const CATEGORY_SCOPE_ALL = "all";
 
@@ -74,15 +54,6 @@ function Field({ label, required = false, hint, children, className }) {
       {hint && <small className="field-hint">{hint}</small>}
     </label>
   );
-}
-
-function formatMoney(value) {
-  if (value === "" || value === null || value === undefined) return "—";
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(Number(value));
 }
 
 function flattenCategoryTree(categories, depth = 0) {
@@ -210,7 +181,7 @@ function CategoryMultiSelect({
                 ? `${selectedCategories.length} categor${
                     selectedCategories.length === 1 ? "y" : "ies"
                   } selected${primaryCategory ? ` · ${primaryCategory.name} is primary` : ""}`
-              : "Choose one or more categories"}
+                : "Choose one or more categories"}
           </small>
         </span>
         {selectedCategories.length > 0 && (
@@ -357,40 +328,19 @@ export function CreateProductPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const editing = Boolean(id);
-  const [step, setStep] = useState(0);
   const [form, setForm] = useState(blankProduct);
   const [selectedAttributeRows, setSelectedAttributeRows] = useState([]);
   const [attributeCatalog, setAttributeCatalog] = useState([]);
   const [attributesLoading, setAttributesLoading] = useState(true);
   const [variants, setVariants] = useState(() => [blankVariant({ expanded: true })]);
-  const [imageFiles, setImageFiles] = useState([]);
-  const [existingImages, setExistingImages] = useState([]);
+  const [images, setImages] = useState([]);
   const [removedImageIds, setRemovedImageIds] = useState([]);
-  const [imageError, setImageError] = useState("");
-  const [draggingImages, setDraggingImages] = useState(false);
   const [options, setOptions] = useState({ metals: [], categories: [] });
   const [categoryScope, setCategoryScope] = useState(CATEGORY_SCOPE_METAL);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
-  const imageFilesRef = useRef([]);
-  const imageInputRef = useRef(null);
   const skuCounterRef = useRef(1);
-  const ActiveStepIcon = steps[step].icon;
-
-  useEffect(() => {
-    imageFilesRef.current = imageFiles;
-  }, [imageFiles]);
-
-  useEffect(
-    () => () => {
-      imageFilesRef.current.forEach((entry) => URL.revokeObjectURL(entry.previewUrl));
-      variants.forEach((variant) =>
-        (variant.imageFiles ?? []).forEach((entry) => URL.revokeObjectURL(entry.previewUrl)),
-      );
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
 
   useEffect(() => {
     Promise.all([
@@ -436,7 +386,15 @@ export function CreateProductPage() {
         const allImages = [...(product.images ?? [])].sort(
           (first, second) => first.displayOrder - second.displayOrder,
         );
-        setExistingImages(allImages.filter((image) => !image.productVariantId));
+        const productLevelImages = allImages.filter((image) => !image.productVariantId);
+        setImages(
+          productLevelImages.map((image) => ({
+            key: `existing-${image.id}`,
+            mediaId: image.mediaId,
+            secureUrl: image.media?.secureUrl,
+            productImageId: image.id,
+          })),
+        );
 
         const loadedVariants = (product.variants ?? []).map((variant, index) => {
           const attributeValues = variant.attributeValues ?? [];
@@ -694,28 +652,24 @@ export function CreateProductPage() {
   const removeVariant = (key) =>
     setVariants((current) => current.filter((variant) => variant._key !== key));
 
-  const addVariantImages = (key, files) => {
+  const addVariantImages = (key, pickedImages) => {
+    const used = usedMediaIds();
+    const fresh = pickedImages.filter((entry) => !used.has(String(entry.mediaId)));
+    if (!fresh.length) return;
     setVariants((current) =>
-      current.map((variant) => {
-        if (variant._key !== key) return variant;
-        const entries = files.map((file) => ({
-          id: `${file.name}-${file.size}-${file.lastModified}`,
-          file,
-          previewUrl: URL.createObjectURL(file),
-        }));
-        return { ...variant, imageFiles: [...variant.imageFiles, ...entries] };
-      }),
+      current.map((variant) =>
+        variant._key === key ? { ...variant, newImages: [...variant.newImages, ...fresh] } : variant,
+      ),
     );
   };
 
-  const removeVariantNewImage = (key, imageId) => {
+  const removeVariantNewImage = (key, mediaId) => {
     setVariants((current) =>
-      current.map((variant) => {
-        if (variant._key !== key) return variant;
-        const removed = variant.imageFiles.find((entry) => entry.id === imageId);
-        if (removed) URL.revokeObjectURL(removed.previewUrl);
-        return { ...variant, imageFiles: variant.imageFiles.filter((entry) => entry.id !== imageId) };
-      }),
+      current.map((variant) =>
+        variant._key === key
+          ? { ...variant, newImages: variant.newImages.filter((entry) => entry.mediaId !== mediaId) }
+          : variant,
+      ),
     );
   };
 
@@ -732,65 +686,42 @@ export function CreateProductPage() {
     );
   };
 
-  const addImageFiles = (selectedFiles) => {
-    setImageError("");
-    const candidates = Array.from(selectedFiles ?? []);
-    const invalidFile = candidates.find((file) => !ACCEPTED_IMAGE_TYPES.has(file.type));
-
-    if (invalidFile) {
-      setImageError("Only JPG, PNG, and WebP images are supported.");
-      if (imageInputRef.current) imageInputRef.current.value = "";
-      return;
+  // (product_id, media_id) is unique on the backend regardless of which
+  // variant an image belongs to — the same media can only ever be attached
+  // to a product once. Re-picking an already-attached image from the
+  // library used to reach the server and fail there with a raw DB
+  // constraint error; filtering it out here catches it before that.
+  const usedMediaIds = () => {
+    const ids = new Set(images.map((image) => String(image.mediaId)));
+    for (const variant of variants) {
+      for (const image of variant.existingImages ?? []) ids.add(String(image.mediaId));
+      for (const image of variant.newImages ?? []) ids.add(String(image.mediaId));
     }
+    return ids;
+  };
 
-    const occupiedSlots = existingImages.length + imageFiles.length;
-    const availableSlots = Math.max(MAX_PRODUCT_IMAGES - occupiedSlots, 0);
-    const knownFiles = new Set(
-      imageFiles.map((entry) => `${entry.file.name}-${entry.file.size}-${entry.file.lastModified}`),
-    );
-    const uniqueFiles = candidates.filter((file) => {
-      const key = `${file.name}-${file.size}-${file.lastModified}`;
-      if (knownFiles.has(key)) return false;
-      knownFiles.add(key);
-      return true;
-    });
-    const acceptedFiles = uniqueFiles.slice(0, availableSlots);
-
-    if (acceptedFiles.length < uniqueFiles.length || (candidates.length && !availableSlots)) {
-      setImageError(`A product can have a maximum of ${MAX_PRODUCT_IMAGES} images.`);
-    }
-
-    setImageFiles((current) => [
+  const addProductImages = (pickedImages) => {
+    const used = usedMediaIds();
+    const fresh = pickedImages.filter((entry) => !used.has(String(entry.mediaId)));
+    if (!fresh.length) return;
+    setImages((current) => [
       ...current,
-      ...acceptedFiles.map((file) => ({
-        id: `${file.name}-${file.size}-${file.lastModified}`,
-        file,
-        previewUrl: URL.createObjectURL(file),
+      ...fresh.map((entry, index) => ({
+        key: `new-${entry.mediaId}-${Date.now()}-${index}`,
+        mediaId: entry.mediaId,
+        secureUrl: entry.secureUrl,
       })),
     ]);
-
-    if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
-  const removeNewImage = (imageId) => {
-    setImageFiles((current) => {
-      const removed = current.find((entry) => entry.id === imageId);
-      if (removed) URL.revokeObjectURL(removed.previewUrl);
-      return current.filter((entry) => entry.id !== imageId);
+  const removeProductImage = (key) => {
+    setImages((current) => {
+      const target = current.find((image) => image.key === key);
+      if (target?.productImageId) {
+        setRemovedImageIds((ids) => [...new Set([...ids, target.productImageId])]);
+      }
+      return current.filter((image) => image.key !== key);
     });
-    setImageError("");
-  };
-
-  const removeExistingImage = (imageId) => {
-    setExistingImages((current) => current.filter((image) => image.id !== imageId));
-    setRemovedImageIds((current) => [...new Set([...current, imageId])]);
-    setImageError("");
-  };
-
-  const handleImageDrop = (event) => {
-    event.preventDefault();
-    setDraggingImages(false);
-    addImageFiles(event.dataTransfer.files);
   };
 
   const buildVariantPayload = (variant) => ({
@@ -883,32 +814,26 @@ export function CreateProductPage() {
         }
       }
 
-      if (imageFiles.length) {
-        const uploaded = await mediaService.upload(
-          imageFiles.map((entry) => entry.file),
-          { folder: "products", ownerType: "PRODUCT", ownerId: product.id },
-        );
+      const newProductImages = images.filter((image) => !image.productImageId);
+      if (newProductImages.length) {
+        const existingCount = images.length - newProductImages.length;
         await productService.addImages(product.id, {
-          images: (uploaded.data ?? []).map((media, index) => ({
-            mediaId: media.id,
+          images: newProductImages.map((image, index) => ({
+            mediaId: image.mediaId,
             altText: form.name,
-            isPrimary: existingImages.length === 0 && index === 0,
-            displayOrder: existingImages.length + index,
+            isPrimary: images.indexOf(image) === 0,
+            displayOrder: existingCount + index,
           })),
         });
       }
 
       for (const variant of workingVariants) {
-        if (!variant.imageFiles.length) continue;
+        if (!variant.newImages.length) continue;
         const savedVariant = product.variants.find((row) => row.sku === variant.sku);
         if (!savedVariant) continue;
-        const uploaded = await mediaService.upload(
-          variant.imageFiles.map((entry) => entry.file),
-          { folder: "products", ownerType: "PRODUCT_VARIANT", ownerId: savedVariant.id },
-        );
         await productService.addImages(product.id, {
-          images: (uploaded.data ?? []).map((media, index) => ({
-            mediaId: media.id,
+          images: variant.newImages.map((entry, index) => ({
+            mediaId: entry.mediaId,
             productVariantId: savedVariant.id,
             altText: variant.name || form.name,
             isPrimary: false,
@@ -925,13 +850,30 @@ export function CreateProductPage() {
     }
   };
 
-  const next = () => {
-    if (step === steps.length - 1) save(form.status);
-    else setStep((value) => value + 1);
+  const deleteDraft = async () => {
+    if (!editing) return;
+    if (!window.confirm("Delete this draft product? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      await productService.remove(id);
+      navigate("/products");
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError));
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const totalImageCount = existingImages.length + imageFiles.length;
   const isVariable = form.productType === "VARIABLE";
+
+  const readinessItems = [
+    { label: "Product name", done: Boolean(form.name.trim()) },
+    { label: "Metal selected", done: Boolean(form.metalId) },
+    { label: "Category assigned", done: form.categoryIds.length > 0 },
+    { label: "At least one image", done: images.length > 0 },
+    { label: "Pricing set", done: variants.some((variant) => Number(variant.basePrice) > 0) },
+    { label: "Description added", done: Boolean(form.description.trim()) },
+  ];
 
   return (
     <div className="page-stack">
@@ -940,54 +882,24 @@ export function CreateProductPage() {
         title={editing ? "Edit Product" : "Create Product"}
         description="Build a product with complete catalog, pricing, stock, and media information."
         actions={
-          <Button loading={saving} variant="secondary" icon={Save} onClick={() => save("DRAFT")}>
-            Save Draft
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => navigate("/products")}>
+              Cancel
+            </Button>
+            <Button icon={Check} loading={saving} onClick={() => save(form.status)}>
+              {editing ? "Update Product" : "Create Product"}
+            </Button>
+          </>
         }
       />
       {error && <FormAlert>{error}</FormAlert>}
-      <Card className="product-wizard" padded={false}>
-        <div className="product-steps">
-          {steps.map((item, index) => (
-            <button
-              type="button"
-              key={item.label}
-              className={`${index === step ? "active" : ""} ${index < step ? "complete" : ""}`}
-              onClick={() => setStep(index)}
-            >
-              <span>{index < step ? <Check size={16} /> : <item.icon size={16} />}</span>
-              <small>Step {index + 1}</small>
-              <strong>{item.label}</strong>
-            </button>
-          ))}
-        </div>
-        <div className="product-steps-bar" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={steps.length}>
-          <span style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
-        </div>
-        <div className="product-wizard__body">
-          <div className="product-wizard__heading">
-            <div>
-              <span>
-                Step {step + 1} of {steps.length}
-              </span>
-              <h2>{steps[step].label}</h2>
-              <p>Information is validated again by the OrnaCore API before it is saved.</p>
-            </div>
-            <span className="wizard-progress">
-              {Math.round(((step + 1) / steps.length) * 100)}%
-            </span>
-          </div>
 
-          {step === 0 && (
-            <div className="product-form-grid">
-              <div className="product-status-panel product-field--full">
-                <span>
-                  <strong>Product availability</strong>
-                  <small>
-                    Active products can be ordered by shopkeepers. Use Save Draft for unfinished
-                    products.
-                  </small>
-                </span>
+      <div className="product-workspace">
+        <main className="product-main">
+          <Card className="product-panel">
+            <div className="card-heading product-details-heading">
+              <h2>Details</h2>
+              <div className="product-status-panel product-status-panel--actions-only">
                 {["OUT_OF_STOCK", "ARCHIVED"].includes(form.status) ? (
                   <StatusBadge status={form.status.replaceAll("_", " ")} />
                 ) : (
@@ -1004,6 +916,8 @@ export function CreateProductPage() {
                   />
                 )}
               </div>
+            </div>
+            <div className="product-form-grid">
               <Field label="Product Name" required hint="Shown to shopkeepers and customers everywhere.">
                 <input placeholder="e.g. Floral Gold Necklace" value={form.name} onChange={setValue("name")} />
               </Field>
@@ -1020,369 +934,168 @@ export function CreateProductPage() {
                   ))}
                 </select>
               </Field>
-              <div className="product-category-picker product-field--full">
-                <div className="product-category-picker__heading">
-                  <span>
-                    <strong>
-                      Categories <em>*</em>
-                    </strong>
-                    <small>
-                      {selectedMetal
-                        ? `${selectedMetal.name} categories are shown by default. Switch to All to inspect the full hierarchy.`
-                        : "Select metal first to load matching categories."}
-                    </small>
-                  </span>
-                  <b>{form.categoryIds.length} selected</b>
-                </div>
-                <CategoryMultiSelect
-                  categories={visibleCategories}
-                  categoryScope={categoryScope}
-                  primaryId={form.primaryCategoryId}
-                  selectedMetalId={form.metalId}
-                  selectedIds={form.categoryIds}
-                  onClear={clearCategories}
-                  onPrimary={setPrimaryCategory}
-                  onScopeChange={setCategoryScope}
-                  onToggle={toggleCategory}
-                />
-                {!form.categoryIds.length && (
-                  <p className="product-category-picker__empty">
-                    Select at least one category to continue.
-                  </p>
-                )}
-              </div>
-              <Field label="Description" className="product-field--full">
-                <textarea
-                  placeholder="Describe the craftsmanship, occasion, or styling details…"
-                  rows="5"
-                  value={form.description}
-                  onChange={setValue("description")}
-                />
-              </Field>
             </div>
-          )}
+          </Card>
 
-          {step === 1 && (
-            <div className="product-step-sections">
-              <section className="product-step-section">
-                <div className="product-step-section__heading">
-                  <div>
-                    <h3>Product type</h3>
-                    <p>Simple products have one SKU. Variable products generate multiple SKUs from options.</p>
-                  </div>
-                </div>
-                <div className="product-type-cards" role="radiogroup" aria-label="Product type">
-                  <button
-                    aria-checked={!isVariable}
-                    className={`product-type-card ${!isVariable ? "is-active" : ""}`}
-                    role="radio"
-                    type="button"
-                    onClick={() => setProductType("SIMPLE")}
-                  >
-                    <Package size={20} />
-                    <strong>Simple product</strong>
-                    <span>One SKU, one price, one stock count.</span>
-                  </button>
-                  <button
-                    aria-checked={isVariable}
-                    className={`product-type-card ${isVariable ? "is-active" : ""}`}
-                    role="radio"
-                    type="button"
-                    onClick={() => setProductType("VARIABLE")}
-                  >
-                    <Layers size={20} />
-                    <strong>Variable product</strong>
-                    <span>Multiple SKUs generated from options like Size or Color.</span>
-                  </button>
-                </div>
-
-                {isVariable && (
-                  <VariantOptionsBuilder
-                    attributeCatalog={attributeCatalog}
-                    loadingAttributes={attributesLoading}
-                    selectedRows={selectedAttributeRows}
-                    onChange={setSelectedAttributeRows}
-                    onGenerate={generateVariants}
-                    onAddValue={addAttributeValue}
-                  />
-                )}
-              </section>
-
-              <section className="product-step-section">
-                <div className="product-step-section__heading">
-                  <div>
-                    <h3>{isVariable ? "Variants" : "Pricing & inventory"}</h3>
-                    <p>
-                      {isVariable
-                        ? "Each generated variant has its own SKU, pricing, and stock."
-                        : "Set the opening commercial values for this product."}
-                    </p>
-                  </div>
-                  <Boxes size={18} />
-                </div>
-                <div className="variant-list">
-                  {variants.map((variant) => (
-                    <VariantCard
-                      key={variant._key}
-                      variant={variant}
-                      collapsible={isVariable}
-                      expanded={!isVariable || variant.expanded}
-                      showAttributes={isVariable}
-                      showRemove={isVariable && !variant.id}
-                      showImages={isVariable}
-                      onToggleExpand={() => toggleVariantExpanded(variant._key)}
-                      onFieldChange={(field, value, extra) =>
-                        updateVariant(variant._key, { [field]: value, ...extra })
-                      }
-                      onTunchChange={(tunch) => setVariantTunch(variant._key, tunch)}
-                      onRemove={() => removeVariant(variant._key)}
-                      onAddImages={(files) => addVariantImages(variant._key, files)}
-                      onRemoveNewImage={(imageId) => removeVariantNewImage(variant._key, imageId)}
-                      onRemoveExistingImage={(imageId) =>
-                        removeVariantExistingImage(variant._key, imageId)
-                      }
-                    />
-                  ))}
-                  {isVariable && !variants.length && (
-                    <p className="wizard-note">
-                      Add options above and click Generate Variants to build SKUs.
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              <section className="product-step-section">
-                <div className="product-step-section__heading">
-                  <div>
-                    <h3>Product images</h3>
-                    <p>Add multiple product views. The first image becomes the primary image.</p>
-                  </div>
-                  <span className="image-count">
-                    {totalImageCount}/{MAX_PRODUCT_IMAGES}
-                  </span>
-                </div>
-                {imageError && <p className="product-images-error">{imageError}</p>}
-                <div className="product-media-grid">
-                  {existingImages.map((image, index) => (
-                    <article className="product-media-tile" key={`existing-${image.id}`}>
-                      <img
-                        alt={image.altText || form.name || `Product image ${index + 1}`}
-                        src={image.media?.secureUrl}
-                      />
-                      <span>{index === 0 ? "Primary" : `Image ${index + 1}`}</span>
-                      <button
-                        aria-label={`Remove saved image ${index + 1}`}
-                        type="button"
-                        onClick={() => removeExistingImage(image.id)}
-                      >
-                        <X size={14} />
-                      </button>
-                    </article>
-                  ))}
-                  {imageFiles.map((entry, index) => {
-                    const imageNumber = existingImages.length + index + 1;
-                    return (
-                      <article className="product-media-tile" key={entry.id}>
-                        <img
-                          alt={`${form.name || "Product"} preview ${imageNumber}`}
-                          src={entry.previewUrl}
-                        />
-                        <span>{imageNumber === 1 ? "Primary" : `Image ${imageNumber}`}</span>
-                        <button
-                          aria-label={`Remove selected image ${imageNumber}`}
-                          type="button"
-                          onClick={() => removeNewImage(entry.id)}
-                        >
-                          <X size={14} />
-                        </button>
-                      </article>
-                    );
-                  })}
-                  {totalImageCount < MAX_PRODUCT_IMAGES && (
-                    <button
-                      className={`product-media-upload ${draggingImages ? "is-dragging" : ""}`}
-                      type="button"
-                      onClick={() => imageInputRef.current?.click()}
-                      onDragEnter={(event) => {
-                        event.preventDefault();
-                        setDraggingImages(true);
-                      }}
-                      onDragLeave={(event) => {
-                        event.preventDefault();
-                        setDraggingImages(false);
-                      }}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={handleImageDrop}
-                    >
-                      <span>
-                        <Plus size={25} />
-                      </span>
-                      <strong>Add images</strong>
-                      <small>Choose or drop multiple</small>
-                    </button>
-                  )}
-                  <input
-                    ref={imageInputRef}
-                    accept="image/jpeg,image/png,image/webp"
-                    hidden
-                    multiple
-                    type="file"
-                    onChange={(event) => addImageFiles(event.target.files)}
-                  />
-                </div>
-                <p className="product-media-help">
-                  JPG, PNG, or WebP · maximum {MAX_PRODUCT_IMAGES} images
-                </p>
-              </section>
+          <Card className="product-panel">
+            <div className="card-heading">
+              <h2>Category</h2>
             </div>
-          )}
-
-          {step === 2 && (
-            <div className="product-review">
-              <div className="product-review__hero">
+            <div className="product-category-picker">
+              <div className="product-category-picker__heading">
                 <span>
-                  <ActiveStepIcon size={28} />
+                  <strong>
+                    Categories <em>*</em>
+                  </strong>
+                  <small>
+                    {selectedMetal
+                      ? `${selectedMetal.name} categories are shown by default. Switch to All to inspect the full hierarchy.`
+                      : "Select metal first to load matching categories."}
+                  </small>
                 </span>
-                <div>
-                  <small>Ready to save</small>
-                  <h3>{form.name || "Untitled product"}</h3>
-                  <p>
-                    {form.designCode || "No design code"} · {variants.length} variant
-                    {variants.length === 1 ? "" : "s"}
-                  </p>
-                </div>
+                <b>{form.categoryIds.length} selected</b>
               </div>
-              <div className="product-review__sections">
-                <section>
-                  <div className="product-review__section-head">
-                    <h4>Product</h4>
-                    <button type="button" onClick={() => setStep(0)}>
-                      <Pencil size={11} />
-                      Edit
-                    </button>
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Metal</dt>
-                      <dd>{selectedMetal?.name || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Primary category</dt>
-                      <dd>{selectedPrimaryCategory?.path || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>All categories</dt>
-                      <dd>
-                        {selectedCategories.length
-                          ? selectedCategories.map(({ name }) => name).join(", ")
-                          : "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Status</dt>
-                      <dd>{form.status}</dd>
-                    </div>
-                    <div>
-                      <dt>Type</dt>
-                      <dd>{isVariable ? "Variable" : "Simple"}</dd>
-                    </div>
-                  </dl>
-                </section>
-                {variants.map((variant) => (
-                  <section key={variant._key}>
-                    <div className="product-review__section-head">
-                      <h4>{variant.name || "Variant"}</h4>
-                      <button type="button" onClick={() => setStep(1)}>
-                        <Pencil size={11} />
-                        Edit
-                      </button>
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>SKU</dt>
-                        <dd>{variant.sku || "—"}</dd>
-                      </div>
-                      <div>
-                        <dt>Purity / Karat</dt>
-                        <dd>{variant.purity || "—"}</dd>
-                      </div>
-                      <div>
-                        <dt>Public Purity / Karat</dt>
-                        <dd>{variant.publicPurity || "—"}</dd>
-                      </div>
-                      <div>
-                        <dt>Weight</dt>
-                        <dd>{variant.weightGrams ? `${variant.weightGrams} g` : "—"}</dd>
-                      </div>
-                      <div>
-                        <dt>Base price</dt>
-                        <dd>{variant.id ? "Managed in Pricing" : formatMoney(variant.basePrice)}</dd>
-                      </div>
-                      <div>
-                        <dt>Opening stock</dt>
-                        <dd>{variant.id ? "Managed in Inventory" : variant.openingStock || "0"}</dd>
-                      </div>
-                      <div>
-                        <dt>Low stock alert</dt>
-                        <dd>{variant.id ? "Managed in Inventory" : variant.reorderLevel || "0"}</dd>
-                      </div>
-                    </dl>
-                  </section>
-                ))}
-              </div>
-              {totalImageCount > 0 && (
-                <div className="product-review__images">
-                  {existingImages.map((image, index) => (
-                    <img
-                      alt={image.altText || `${form.name} ${index + 1}`}
-                      key={`review-existing-${image.id}`}
-                      src={image.media?.secureUrl}
-                    />
-                  ))}
-                  {imageFiles.map((entry, index) => (
-                    <img
-                      alt={`${form.name || "Product"} ${existingImages.length + index + 1}`}
-                      key={`review-new-${entry.id}`}
-                      src={entry.previewUrl}
-                    />
-                  ))}
-                </div>
-              )}
-              {form.description && (
-                <div className="wizard-note">
-                  <strong>Description:</strong> {form.description}
-                </div>
+              <CategoryMultiSelect
+                categories={visibleCategories}
+                categoryScope={categoryScope}
+                primaryId={form.primaryCategoryId}
+                selectedMetalId={form.metalId}
+                selectedIds={form.categoryIds}
+                onClear={clearCategories}
+                onPrimary={setPrimaryCategory}
+                onScopeChange={setCategoryScope}
+                onToggle={toggleCategory}
+              />
+              {!form.categoryIds.length && (
+                <p className="product-category-picker__empty">
+                  Select at least one category to continue.
+                </p>
               )}
             </div>
-          )}
-        </div>
-        <div className="product-wizard__footer">
-          <Button
-            variant="ghost"
-            icon={ChevronLeft}
-            disabled={step === 0}
-            onClick={() => setStep((value) => Math.max(value - 1, 0))}
-          >
-            Previous
-          </Button>
-          <div>
-            <Button variant="secondary" onClick={() => navigate("/products")}>
-              Cancel
-            </Button>
-            <Button
-              loading={saving}
-              icon={step === steps.length - 1 ? Check : ChevronRight}
-              onClick={next}
-            >
-              {step === steps.length - 1
-                ? editing
-                  ? "Update Product"
-                  : "Create Product"
-                : "Save & Continue"}
-            </Button>
-          </div>
-        </div>
-      </Card>
+          </Card>
+
+          <Card className="product-panel">
+            <div className="card-heading">
+              <h2>Description</h2>
+            </div>
+            <textarea
+              className="product-description-input"
+              placeholder="Describe the craftsmanship, occasion, or styling details…"
+              rows="5"
+              value={form.description}
+              onChange={setValue("description")}
+            />
+          </Card>
+
+          <Card className="product-panel">
+            <div className="card-heading">
+              <h2>Product Images</h2>
+            </div>
+            <ProductMediaGallery
+              images={images}
+              maxImages={MAX_PRODUCT_IMAGES}
+              onAdd={addProductImages}
+              onRemove={removeProductImage}
+            />
+          </Card>
+
+          <Card className="product-panel">
+            <div className="card-heading">
+              <h2>Product Type</h2>
+            </div>
+            <div className="product-type-cards" role="radiogroup" aria-label="Product type">
+              <button
+                aria-checked={!isVariable}
+                className={`product-type-card ${!isVariable ? "is-active" : ""}`}
+                role="radio"
+                type="button"
+                onClick={() => setProductType("SIMPLE")}
+              >
+                <Package size={20} />
+                <strong>Simple product</strong>
+                <span>One SKU, one price, one stock count.</span>
+              </button>
+              <button
+                aria-checked={isVariable}
+                className={`product-type-card ${isVariable ? "is-active" : ""}`}
+                role="radio"
+                type="button"
+                onClick={() => setProductType("VARIABLE")}
+              >
+                <Layers size={20} />
+                <strong>Variable product</strong>
+                <span>Multiple SKUs generated from options like Size or Color.</span>
+              </button>
+            </div>
+
+            {isVariable && (
+              <VariantOptionsBuilder
+                attributeCatalog={attributeCatalog}
+                loadingAttributes={attributesLoading}
+                selectedRows={selectedAttributeRows}
+                onChange={setSelectedAttributeRows}
+                onGenerate={generateVariants}
+                onAddValue={addAttributeValue}
+              />
+            )}
+          </Card>
+
+          <Card className="product-panel">
+            <div className="card-heading">
+              <h2>{isVariable ? "Variants" : "Pricing & Inventory"}</h2>
+            </div>
+            <div className="variant-list">
+              {variants.map((variant) => (
+                <VariantCard
+                  key={variant._key}
+                  variant={variant}
+                  collapsible={isVariable}
+                  expanded={!isVariable || variant.expanded}
+                  showAttributes={isVariable}
+                  showRemove={isVariable && !variant.id}
+                  showImages={isVariable}
+                  onToggleExpand={() => toggleVariantExpanded(variant._key)}
+                  onFieldChange={(field, value, extra) =>
+                    updateVariant(variant._key, { [field]: value, ...extra })
+                  }
+                  onTunchChange={(tunch) => setVariantTunch(variant._key, tunch)}
+                  onRemove={() => removeVariant(variant._key)}
+                  onAddImages={(picked) => addVariantImages(variant._key, picked)}
+                  onRemoveNewImage={(mediaId) => removeVariantNewImage(variant._key, mediaId)}
+                  onRemoveExistingImage={(imageId) => removeVariantExistingImage(variant._key, imageId)}
+                />
+              ))}
+              {isVariable && !variants.length && (
+                <p className="wizard-note">
+                  Add options above and click Generate Variants to build SKUs.
+                </p>
+              )}
+            </div>
+          </Card>
+        </main>
+
+        <aside className="product-sidebar">
+          <ProductLivePreviewCard
+            name={form.name}
+            coverImageUrl={images[0]?.secureUrl}
+            status={form.status}
+            metalName={selectedMetal?.name}
+            purity={variants[0]?.publicPurity || variants[0]?.purity}
+            categoryName={selectedPrimaryCategory?.name}
+            description={form.description}
+            variants={variants}
+          />
+          <ProductReadinessCard items={readinessItems} />
+          <ProductQuickActionsCard
+            saving={saving}
+            onSaveDraft={() => save("DRAFT")}
+            editing={editing}
+            isDraft={form.status === "DRAFT"}
+            deleting={deleting}
+            onDelete={deleteDraft}
+          />
+        </aside>
+      </div>
     </div>
   );
 }

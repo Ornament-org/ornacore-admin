@@ -4,6 +4,7 @@ import {
   FolderOpen,
   Image as ImageIcon,
   Pencil,
+  Star,
   Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -57,6 +58,11 @@ function TreeNode({ category, level = 0, onEdit, onDelete, onStatusChange, setSt
         <div className="category-tree-node__meta">
           {category.metal?.name && (
             <span className="category-tree-node__metal">{category.metal.name}</span>
+          )}
+          {category.featuredOnHome && (
+            <span className="category-tree-node__featured" title="Featured in Shop by Category">
+              <Star size={12} /> Featured
+            </span>
           )}
           <span className="category-tree-node__products">
             {category.productCount || 0} products

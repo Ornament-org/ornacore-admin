@@ -1,5 +1,6 @@
 import { ArrowRightCircle, UserRoundCheck } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { EntityCell } from "../../../components/common/EntityCell.jsx";
 import { PreviewListPage } from "../../../components/common/PreviewListPage.jsx";
 import { ResourceFormModal } from "../../../components/common/ResourceFormModal.jsx";
@@ -7,6 +8,7 @@ import { StatusBadge } from "../../../components/common/StatusBadge.jsx";
 import { orderRows } from "../../../data/demoData.js";
 import { orderService } from "../../../services/resourceServices.js";
 import { formatCurrency } from "../../../utils/formatters.js";
+import { ORDER_TRANSITIONS } from "../orderTransitions.js";
 
 const columns = [
   { key: "id", label: "Order ID" },
@@ -32,16 +34,6 @@ const statusByTitle = {
   "Cancelled Orders": "CANCELLED",
 };
 
-const transitions = {
-  REQUESTED: ["PRICE_CONFIRMED", "CONFIRMED", "CANCELLED"],
-  PRICE_CONFIRMED: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["PACKED", "CANCELLED"],
-  PACKED: ["DISPATCHED", "CANCELLED"],
-  DISPATCHED: ["DELIVERED"],
-  DELIVERED: [],
-  CANCELLED: [],
-};
-
 const mapOrders = (rows) =>
   rows.map((row) => ({
     ...row,
@@ -55,6 +47,7 @@ const mapOrders = (rows) =>
   }));
 
 export function OrdersPage({ title = "All Orders" }) {
+  const navigate = useNavigate();
   const [modal, setModal] = useState({ open: false, type: null, record: null, refresh: null });
   const query = useMemo(
     () => (statusByTitle[title] ? { status: statusByTitle[title] } : {}),
@@ -88,7 +81,7 @@ export function OrdersPage({ title = "All Orders" }) {
         label: "Next status",
         type: "select",
         required: true,
-        options: transitions[modal.record?.status] ?? [],
+        options: ORDER_TRANSITIONS[modal.record?.status] ?? [],
       },
       { name: "note", label: "Status note", type: "textarea", nullable: true, fullWidth: true },
     ];
@@ -98,7 +91,7 @@ export function OrdersPage({ title = "All Orders" }) {
     {
       label: "Update status",
       icon: ArrowRightCircle,
-      hidden: (record) => transitions[record.status]?.length === 0,
+      hidden: (record) => ORDER_TRANSITIONS[record.status]?.length === 0,
       onClick: (record) => setModal({ open: true, type: "status", record, refresh }),
     },
     {
@@ -121,11 +114,12 @@ export function OrdersPage({ title = "All Orders" }) {
         rowActions={rowActions}
         rows={orderRows}
         service={orderService}
-        statusOptions={Object.keys(transitions)}
+        statusOptions={Object.keys(ORDER_TRANSITIONS)}
         title={title}
         onPrimaryAction={(refresh) =>
           setModal({ open: true, type: "create", record: null, refresh })
         }
+        onRowClick={(record) => navigate(`/orders/${record.recordId}`)}
       />
       <ResourceFormModal
         description="Order pricing is recalculated by the backend and stored as an immutable snapshot."

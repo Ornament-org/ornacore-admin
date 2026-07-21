@@ -3,21 +3,35 @@ import {
   ChevronUp,
   Copy,
   GripVertical,
+  Monitor,
   Plus,
+  RefreshCw,
   Save,
+  Smartphone,
   Trash2,
   UploadCloud,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "../../../components/common/Badge.jsx";
 import { Button } from "../../../components/common/Button.jsx";
 import { Card } from "../../../components/common/Card.jsx";
 import { FormAlert } from "../../../components/common/FormAlert.jsx";
 import { Modal } from "../../../components/common/Modal.jsx";
 import { StatusToggle } from "../../../components/common/StatusToggle.jsx";
+import { BannerPicker } from "../../../components/banners/BannerPicker/BannerPicker.jsx";
+import { CategoryPicker } from "../../../components/categories/CategoryPicker/CategoryPicker.jsx";
 import { PageHeader } from "../../../components/layout/PageHeader.jsx";
+import { MediaPicker } from "../../../components/media/MediaPicker/MediaPicker.jsx";
+import { env } from "../../../config/env.js";
 import { apiErrorMessage } from "../../../services/apiClient.js";
-import { homepageService, metalService } from "../../../services/resourceServices.js";
+import {
+  bannerService,
+  categoryService,
+  collectionService,
+  homepageService,
+  metalService,
+} from "../../../services/resourceServices.js";
 import { SECTION_TYPES, sectionTypeMeta, sectionTypesForAudience } from "../data/sectionTypes.js";
 import "./HomepageManagementPage.scss";
 
@@ -26,141 +40,299 @@ const AUDIENCES = [
   { value: "B2C", label: "B2C (Customers)" },
 ];
 
-const statusTone = { PUBLISHED: "success", DRAFT: "warning", ARCHIVED: "neutral" };
+const statusTone = { ACTIVE: "success", INACTIVE: "neutral" };
 
-function formatDateTime(value) {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+// Picks which admin-created Collections (from Catalog → Collections) appear
+// in this homepage's Collections section, and in what order — a checklist to
+// add/remove plus up/down arrows to reorder, mirroring the section reorder
+// controls elsewhere on this page.
+function CollectionsOrderField({ value, allCollections, onChange }) {
+  const selectedIds = (value ?? []).map(String);
+  const selected = selectedIds
+    .map((id) => allCollections.find((collection) => String(collection.id) === id))
+    .filter(Boolean);
+  const available = allCollections.filter(
+    (collection) => !selectedIds.includes(String(collection.id)),
+  );
+
+  const move = (index, delta) => {
+    const target = index + delta;
+    if (target < 0 || target >= selectedIds.length) return;
+    const next = selectedIds.slice();
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
+  return (
+    <div className="hp-collections-field">
+      <ul className="hp-collections-field__selected">
+        {selected.map((collection, index) => (
+          <li key={collection.id}>
+            <span>{collection.name}</span>
+            <div className="hp-collections-field__actions">
+              <button type="button" title="Move up" onClick={() => move(index, -1)}>
+                <ChevronUp size={13} />
+              </button>
+              <button type="button" title="Move down" onClick={() => move(index, 1)}>
+                <ChevronDown size={13} />
+              </button>
+              <button
+                type="button"
+                className="is-danger"
+                title="Remove"
+                onClick={() => onChange(selectedIds.filter((id) => id !== String(collection.id)))}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </li>
+        ))}
+        {!selected.length && <li className="hp-collections-field__empty">No collections added yet.</li>}
+      </ul>
+
+      {available.length ? (
+        <select
+          value=""
+          onChange={(event) => {
+            if (event.target.value) onChange([...selectedIds, event.target.value]);
+          }}
+        >
+          <option value="">Add a collection…</option>
+          {available.map((collection) => (
+            <option key={collection.id} value={collection.id}>
+              {collection.name}
+            </option>
+          ))}
+        </select>
+      ) : null}
+    </div>
+  );
 }
 
-function SectionPreviewBlock({ section }) {
-  switch (section.sectionType) {
-    case "SEARCH_BAR":
-      return (
-        <div className="hp-preview__search">
-          {section.configJson?.placeholder ?? "Search..."}
-        </div>
-      );
-    case "METAL_SWITCHER":
-      return (
-        <div className="hp-preview__metals">
-          <span className="is-active">GOLD</span>
-          <span>SILVER</span>
-          <span>DIAMOND</span>
-        </div>
-      );
-    case "RATE_BANNER":
-      return (
-        <div className="hp-preview__rate">
-          <small>TODAY&apos;S GOLD RATE</small>
-          <strong>₹ 9,820 /gm</strong>
-          <em>▲ 24 (0.24%) from yesterday</em>
-        </div>
-      );
-    case "HERO_BANNER":
-    case "FESTIVAL_BANNER":
-      return (
-        <div className="hp-preview__hero">
-          <span>{sectionTypeMeta(section.sectionType).label}</span>
-        </div>
-      );
-    case "QUICK_CATEGORIES":
-      return (
-        <div className="hp-preview__section">
-          <small>{section.title ?? "QUICK CATEGORIES"}</small>
-          <div className="hp-preview__tiles">
-            {[...Array(5)].map((_, index) => (
-              <span key={index} />
-            ))}
-          </div>
-        </div>
-      );
-    case "TRENDING_PRODUCTS":
-    case "POPULAR_PRODUCTS":
-    case "RECENTLY_ADDED":
-    case "RECOMMENDED_PRODUCTS":
-      return (
-        <div className="hp-preview__section">
-          <small>{section.title ?? sectionTypeMeta(section.sectionType).label.toUpperCase()}</small>
-          <div className="hp-preview__cards">
-            {[...Array(3)].map((_, index) => (
-              <span key={index} />
-            ))}
-          </div>
-        </div>
-      );
-    case "COLLECTIONS":
-    case "OFFERS":
-      return (
-        <div className="hp-preview__section">
-          <small>{section.title ?? sectionTypeMeta(section.sectionType).label.toUpperCase()}</small>
-          <div className="hp-preview__wide" />
-        </div>
-      );
-    case "TRUST_SECTION":
-      return (
-        <div className="hp-preview__trust">
-          <span>BIS</span>
-          <span>Secure</span>
-          <span>B2B</span>
-          <span>Support</span>
-        </div>
-      );
-    case "SUPPORT_SECTION":
-      return (
-        <div className="hp-preview__support">
-          <span>{section.title ?? "Need help finding something?"}</span>
-          <em>Contact Support</em>
-        </div>
-      );
-    default:
-      return <div className="hp-preview__wide" />;
-  }
+// Picks which categories appear in "Shop by Category", across as many metals
+// as you like from one place — pick a metal, browse that metal's full
+// category list in a checklist, and the picks accumulate here (with up/down
+// reorder), instead of hunting through hundreds of individual category edit
+// forms toggling one at a time.
+function HomeCategoriesField({ value, allCategories, metals, onChange }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const selectedIds = (value ?? []).map(String);
+  const selected = selectedIds
+    .map((id) => allCategories.find((category) => String(category.id) === id))
+    .filter(Boolean);
+
+  const move = (id, delta) => {
+    const index = selectedIds.indexOf(id);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= selectedIds.length) return;
+    const next = selectedIds.slice();
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
+  const remove = (id) => onChange(selectedIds.filter((existing) => existing !== id));
+
+  // The picker owns its own metal switcher and is pre-seeded with every
+  // previously-picked category (across every metal), so its returned
+  // selection is already the complete, authoritative list — no merge math
+  // needed here (unlike HomeBannersField, whose BannerPicker doesn't yet
+  // carry its own metal switcher).
+  const handleConfirm = (pickedCategories) => {
+    onChange(pickedCategories.map((category) => String(category.id)));
+  };
+
+  return (
+    <div className="hp-collections-field">
+      <ul className="hp-collections-field__selected">
+        {selected.map((category) => (
+          <li key={category.id}>
+            <span>
+              {category.name} <small>({category.metal?.name ?? "All Metals"})</small>
+            </span>
+            <div className="hp-collections-field__actions">
+              <button type="button" title="Move up" onClick={() => move(String(category.id), -1)}>
+                <ChevronUp size={13} />
+              </button>
+              <button type="button" title="Move down" onClick={() => move(String(category.id), 1)}>
+                <ChevronDown size={13} />
+              </button>
+              <button
+                type="button"
+                className="is-danger"
+                title="Remove"
+                onClick={() => remove(String(category.id))}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </li>
+        ))}
+        {!selected.length && <li className="hp-collections-field__empty">No categories added yet.</li>}
+      </ul>
+
+      <div className="hp-categories-field__browse">
+        <Button type="button" variant="secondary" size="sm" icon={Plus} onClick={() => setPickerOpen(true)}>
+          Browse categories
+        </Button>
+      </div>
+
+      <CategoryPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        metals={metals}
+        initialSelectedCategories={selected}
+        onConfirm={handleConfirm}
+      />
+    </div>
+  );
+}
+
+// Picks which banners rotate in the "Promotional Banners" carousel, across
+// as many metals as you like from one place — pick a metal, browse that
+// metal's banners in a checklist, and the picks accumulate here (with
+// up/down reorder). A banner with no metal set is eligible on every tab
+// automatically, without needing to be added here per metal.
+function HomeBannersField({ value, allBanners, metals, onChange }) {
+  const [browseMetalOverride, setBrowseMetalOverride] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Derived, not stateful: `metals` loads asynchronously after this field can
+  // already be mounted, so falling back to metals[0] here (rather than baking
+  // it into useState's initializer) means the browse button stops being
+  // permanently stuck disabled once metals arrives.
+  const browseMetalId = browseMetalOverride || (metals[0] ? String(metals[0].id) : "");
+
+  const selectedIds = (value ?? []).map(String);
+  const selected = selectedIds
+    .map((id) => allBanners.find((banner) => String(banner.id) === id))
+    .filter(Boolean);
+
+  const move = (id, delta) => {
+    const index = selectedIds.indexOf(id);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= selectedIds.length) return;
+    const next = selectedIds.slice();
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
+  const remove = (id) => onChange(selectedIds.filter((existing) => existing !== id));
+
+  // Browsing a metal shows that metal's banners *and* any "All Metals" ones
+  // together (they're eligible everywhere, so hiding them per-metal would
+  // make them impossible to find/manage) — so the merge has to treat both as
+  // "visible in this session" when reconciling checked/unchecked state.
+  const visibleInBrowse = (banner) => {
+    if (!banner) return false;
+    return banner.metalId == null || String(banner.metalId) === String(browseMetalId);
+  };
+
+  const handleConfirm = (pickedBanners) => {
+    const withoutBrowsedMetal = selectedIds.filter((id) => {
+      const banner = allBanners.find((item) => String(item.id) === id);
+      return !visibleInBrowse(banner);
+    });
+    onChange([...withoutBrowsedMetal, ...pickedBanners.map((banner) => String(banner.id))]);
+  };
+
+  return (
+    <div className="hp-collections-field">
+      <ul className="hp-collections-field__selected">
+        {selected.map((banner) => (
+          <li key={banner.id}>
+            <span>
+              {banner.title} <small>({banner.metal?.name ?? "All Metals"})</small>
+            </span>
+            <div className="hp-collections-field__actions">
+              <button type="button" title="Move up" onClick={() => move(String(banner.id), -1)}>
+                <ChevronUp size={13} />
+              </button>
+              <button type="button" title="Move down" onClick={() => move(String(banner.id), 1)}>
+                <ChevronDown size={13} />
+              </button>
+              <button
+                type="button"
+                className="is-danger"
+                title="Remove"
+                onClick={() => remove(String(banner.id))}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          </li>
+        ))}
+        {!selected.length && <li className="hp-collections-field__empty">No banners added yet.</li>}
+      </ul>
+
+      <div className="hp-categories-field__browse">
+        <select value={browseMetalId} onChange={(event) => setBrowseMetalOverride(event.target.value)}>
+          {metals.map((metal) => (
+            <option key={metal.id} value={metal.id}>
+              {metal.name}
+            </option>
+          ))}
+        </select>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          icon={Plus}
+          onClick={() => setPickerOpen(true)}
+          disabled={!browseMetalId}
+        >
+          Browse banners
+        </Button>
+      </div>
+
+      <BannerPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        metalId={browseMetalId}
+        initialSelectedBanners={selected.filter(visibleInBrowse)}
+        onConfirm={handleConfirm}
+      />
+    </div>
+  );
 }
 
 export function HomepageManagementPage() {
   const [audience, setAudience] = useState("B2B");
   const [metals, setMetals] = useState([]);
+  const [collections, setCollections] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [banners, setBanners] = useState([]);
   const [metalFilter, setMetalFilter] = useState("");
   const [config, setConfig] = useState(null);
   const [sections, setSections] = useState([]);
-  const [versions, setVersions] = useState([]);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [sectionDraft, setSectionDraft] = useState(null);
-  const [orderDirty, setOrderDirty] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [mediaField, setMediaField] = useState(null);
+  const [previewDevice, setPreviewDevice] = useState("web");
+  const [previewReloadKey, setPreviewReloadKey] = useState(0);
 
   const selectedSection = sections.find((section) => String(section.id) === String(selectedSectionId));
+
+  // "Shop by Category" is a mandatory storefront block — every homepage must
+  // keep at least one. It can still be hidden via the Visibility toggle.
+  const isSoleQuickCategories = (section) =>
+    section?.sectionType === "QUICK_CATEGORIES" &&
+    sections.filter((row) => row.sectionType === "QUICK_CATEGORIES").length <= 1;
 
   const applyConfig = useCallback((payload) => {
     const rows = (payload?.sections ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
     setConfig(payload ?? null);
     setSections(rows);
-    setOrderDirty(false);
     setSelectedSectionId((current) => {
       if (current && rows.some((row) => String(row.id) === String(current))) return current;
       return rows[0]?.id ?? null;
     });
-  }, []);
-
-  const loadVersions = useCallback((id) => {
-    homepageService
-      .versions(id)
-      .then((response) => setVersions(response.data ?? []))
-      .catch(() => setVersions([]));
   }, []);
 
   const loadForFilters = useCallback(() => {
@@ -173,26 +345,40 @@ export function HomepageManagementPage() {
         const wantedMetal = metalFilter === "" ? null : String(metalFilter);
         const match = rows.find((row) => {
           const rowMetal = row.metalId === null || row.metalId === undefined ? null : String(row.metalId);
-          return rowMetal === wantedMetal && row.status !== "ARCHIVED";
+          return rowMetal === wantedMetal;
         });
         if (!match) {
           applyConfig(null);
-          setVersions([]);
           return;
         }
         const detail = await homepageService.get(match.id);
         applyConfig(detail.data);
-        loadVersions(match.id);
       })
       .catch((requestError) => setError(apiErrorMessage(requestError)))
       .finally(() => setLoading(false));
-  }, [audience, metalFilter, applyConfig, loadVersions]);
+  }, [audience, metalFilter, applyConfig]);
 
   useEffect(() => {
+    // Background prefetches for the section-settings pickers — each already
+    // degrades gracefully to an empty list on failure, so a failure here
+    // isn't worth interrupting the admin with an error toast over.
+    const silent = { notification: false };
     metalService
-      .list({ limit: 50 })
+      .list({ isActive: true, limit: 50 }, silent)
       .then((response) => setMetals(response.data?.rows ?? response.data ?? []))
       .catch(() => setMetals([]));
+    collectionService
+      .list({ pageSize: 100, status: "ACTIVE" }, silent)
+      .then((response) => setCollections(response.data ?? []))
+      .catch(() => setCollections([]));
+    categoryService
+      .list({ pageSize: 100, status: "ACTIVE" }, silent)
+      .then((response) => setCategories(response.data?.rows ?? response.data ?? []))
+      .catch(() => setCategories([]));
+    bannerService
+      .list({ pageSize: 100, status: "ACTIVE" }, silent)
+      .then((response) => setBanners(response.data ?? []))
+      .catch(() => setBanners([]));
   }, []);
 
   useEffect(loadForFilters, [loadForFilters]);
@@ -220,7 +406,6 @@ export function HomepageManagementPage() {
     if (!config) return;
     const detail = await homepageService.get(config.id);
     applyConfig(detail.data);
-    loadVersions(config.id);
   };
 
   const createConfig = async () => {
@@ -233,12 +418,24 @@ export function HomepageManagementPage() {
         metalId: metalFilter === "" ? null : Number(metalFilter),
         title: `${audience} Homepage${metal ? ` — ${metal.name}` : ""}`,
       });
-      flashNotice("Homepage created as draft. Add sections, then publish.");
+      flashNotice("Homepage created. Add sections to get started.");
       loadForFilters();
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const persistOrder = async (nextSections) => {
+    if (!config) return;
+    try {
+      await homepageService.reorderSections(
+        config.id,
+        nextSections.map((section, index) => ({ id: Number(section.id), sortOrder: index })),
+      );
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError));
     }
   };
 
@@ -248,7 +445,7 @@ export function HomepageManagementPage() {
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     setSections(next);
-    setOrderDirty(true);
+    persistOrder(next);
   };
 
   const onDrop = (index) => {
@@ -257,48 +454,8 @@ export function HomepageManagementPage() {
     const [moved] = next.splice(dragIndex, 1);
     next.splice(index, 0, moved);
     setSections(next);
-    setOrderDirty(true);
+    persistOrder(next);
     setDragIndex(null);
-  };
-
-  const flushOrder = async () => {
-    if (!orderDirty || !config) return;
-    await homepageService.reorderSections(
-      config.id,
-      sections.map((section, index) => ({ id: Number(section.id), sortOrder: index })),
-    );
-    setOrderDirty(false);
-  };
-
-  const saveDraft = async () => {
-    if (!config) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await flushOrder();
-      await refresh();
-      flashNotice("Draft saved. Publish to make changes live.");
-    } catch (requestError) {
-      setError(apiErrorMessage(requestError));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const publish = async () => {
-    if (!config) return;
-    setPublishing(true);
-    setError(null);
-    try {
-      await flushOrder();
-      await homepageService.publish(config.id);
-      await refresh();
-      flashNotice("Published. The app now serves this version.");
-    } catch (requestError) {
-      setError(apiErrorMessage(requestError));
-    } finally {
-      setPublishing(false);
-    }
   };
 
   const saveSection = async () => {
@@ -392,11 +549,6 @@ export function HomepageManagementPage() {
       };
     });
 
-  const activePreviewSections = useMemo(
-    () => sections.filter((section) => section.isActive !== false),
-    [sections],
-  );
-
   const typeMeta = selectedSection ? sectionTypeMeta(selectedSection.sectionType) : null;
 
   return (
@@ -404,21 +556,27 @@ export function HomepageManagementPage() {
       <PageHeader
         eyebrow="CMS"
         title="Homepage Management"
-        description="Manage homepage sections for different audiences and metals"
-        actions={
-          <>
-            <Button variant="secondary" size="sm" icon={Save} loading={saving} onClick={saveDraft} disabled={!config}>
-              Save as Draft
-            </Button>
-            <Button size="sm" icon={UploadCloud} loading={publishing} onClick={publish} disabled={!config}>
-              Publish Changes
-            </Button>
-          </>
-        }
+        description="Manage homepage sections for different audiences and metals — changes go live immediately"
       />
 
       {error && <FormAlert>{error}</FormAlert>}
       {notice && <FormAlert tone="success">{notice}</FormAlert>}
+
+      <FormAlert tone="info">
+        Looking for the rotating hero banner? That&apos;s managed separately under{" "}
+        <Link to="/cms/banners">CMS → Banner Management</Link>. The sections below control page
+        layout only (search bar, categories, product rows, etc.) — they don&apos;t include banner
+        images.
+      </FormAlert>
+
+      {metalFilter !== "" && (
+        <FormAlert tone="info">
+          You&apos;re editing a homepage scoped to one metal. The live storefront currently only
+          reads the <strong>All metals</strong> homepage — for a Collections section, switch back
+          to All metals and rely on each collection&apos;s own Metal field instead, since that
+          already controls which tab it appears on.
+        </FormAlert>
+      )}
 
       <Card className="hp-filters" padded>
         <div className="hp-filters__group">
@@ -455,7 +613,6 @@ export function HomepageManagementPage() {
             <Badge tone={statusTone[config.status] ?? "neutral"} dot>
               {config.status}
             </Badge>
-            <span className="hp-filters__version">v{config.version}</span>
           </div>
         )}
       </Card>
@@ -534,8 +691,13 @@ export function HomepageManagementPage() {
                       </button>
                       <button
                         type="button"
-                        title="Remove"
+                        title={
+                          isSoleQuickCategories(section)
+                            ? "Shop by Category is required — hide it with the toggle instead"
+                            : "Remove"
+                        }
                         className="is-danger"
+                        disabled={isSoleQuickCategories(section)}
                         onClick={() => setRemoveTarget(section)}
                       >
                         <Trash2 size={14} />
@@ -552,39 +714,6 @@ export function HomepageManagementPage() {
                 );
               })}
               {sections.length === 0 && <div className="hp-empty">No sections yet. Add one to begin.</div>}
-            </div>
-
-            {orderDirty && <p className="hp-sections__dirty">Order changed — Save as Draft to persist.</p>}
-
-            <div className="hp-history">
-              <h4>Homepage History</h4>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Version</th>
-                    <th>Status</th>
-                    <th>Published by</th>
-                    <th>Published on</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {versions.map((version) => (
-                    <tr key={version.id}>
-                      <td>v{version.version}</td>
-                      <td>
-                        <Badge tone="success">{version.status}</Badge>
-                      </td>
-                      <td>{version.publishedBy?.staffProfile?.fullName ?? version.publishedBy?.email ?? "—"}</td>
-                      <td>{formatDateTime(version.createdAt)}</td>
-                    </tr>
-                  ))}
-                  {versions.length === 0 && (
-                    <tr>
-                      <td colSpan={4}>Not published yet.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
             </div>
           </Card>
 
@@ -619,9 +748,59 @@ export function HomepageManagementPage() {
                         inactiveLabel="Off"
                         onChange={(next) => setDraftConfigField(field.name, next)}
                       />
+                    ) : field.input === "media" ? (
+                      <div className="hp-media-field">
+                        {sectionDraft.config[field.name] ? (
+                          <img src={sectionDraft.config[field.name]} alt="" />
+                        ) : (
+                          <div className="hp-media-field__empty">No banner selected</div>
+                        )}
+                        <div className="hp-media-field__actions">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            icon={UploadCloud}
+                            onClick={() => setMediaField(field.name)}
+                          >
+                            Upload / Select
+                          </Button>
+                          {sectionDraft.config[field.name] ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDraftConfigField(field.name, "")}
+                            >
+                              Clear
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : field.input === "collections" ? (
+                      <CollectionsOrderField
+                        value={sectionDraft.config[field.name]}
+                        allCollections={collections}
+                        onChange={(nextIds) => setDraftConfigField(field.name, nextIds)}
+                      />
+                    ) : field.input === "categoriesByMetal" ? (
+                      <HomeCategoriesField
+                        value={sectionDraft.config[field.name]}
+                        allCategories={categories}
+                        metals={metals}
+                        onChange={(nextIds) => setDraftConfigField(field.name, nextIds)}
+                      />
+                    ) : field.input === "bannersByMetal" ? (
+                      <HomeBannersField
+                        value={sectionDraft.config[field.name]}
+                        allBanners={banners}
+                        metals={metals}
+                        onChange={(nextIds) => setDraftConfigField(field.name, nextIds)}
+                      />
                     ) : (
                       <input
                         type={field.input === "number" ? "number" : "text"}
+                        placeholder={field.name === "ctaTarget" ? "/products?category=nathni" : ""}
                         value={sectionDraft.config[field.name] ?? ""}
                         onChange={(event) =>
                           setDraftConfigField(
@@ -662,7 +841,18 @@ export function HomepageManagementPage() {
                 </details>
 
                 <div className="hp-settings__actions">
-                  <Button variant="danger" size="sm" icon={Trash2} onClick={() => setRemoveTarget(selectedSection)}>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    disabled={isSoleQuickCategories(selectedSection)}
+                    title={
+                      isSoleQuickCategories(selectedSection)
+                        ? "Shop by Category is required — hide it with the Visibility toggle instead"
+                        : undefined
+                    }
+                    onClick={() => setRemoveTarget(selectedSection)}
+                  >
                     Remove Section
                   </Button>
                   <Button size="sm" icon={Save} loading={saving} onClick={saveSection}>
@@ -674,19 +864,40 @@ export function HomepageManagementPage() {
           </Card>
 
           <Card className="hp-preview" padded>
-            <h3>
-              Live Preview <small>({audience} {metalFilter === "" ? "" : `· ${metals.find((m) => String(m.id) === String(metalFilter))?.name ?? ""}`})</small>
-            </h3>
-            <div className="hp-preview__phone">
-              <div className="hp-preview__notch" />
-              <div className="hp-preview__screen">
-                <div className="hp-preview__brand">ORNACORE</div>
-                {activePreviewSections.map((section) => (
-                  <SectionPreviewBlock key={section.id ?? section.sectionKey} section={section} />
-                ))}
+            <div className="hp-preview__head">
+              <h3>Live Preview</h3>
+              <div className="hp-preview__tabs">
+                <button
+                  type="button"
+                  className={previewDevice === "web" ? "is-active" : ""}
+                  onClick={() => setPreviewDevice("web")}
+                >
+                  <Monitor size={14} /> Web
+                </button>
+                <button
+                  type="button"
+                  className={previewDevice === "mobile" ? "is-active" : ""}
+                  onClick={() => setPreviewDevice("mobile")}
+                >
+                  <Smartphone size={14} /> Mobile
+                </button>
               </div>
+              <button
+                type="button"
+                className="hp-preview__refresh"
+                title="Reload preview"
+                onClick={() => setPreviewReloadKey((key) => key + 1)}
+              >
+                <RefreshCw size={14} />
+              </button>
             </div>
-            <p className="hp-preview__hint">This is a structural preview. Changes reflect after saving.</p>
+            <div className={`hp-preview__frame hp-preview__frame--${previewDevice}`}>
+              <iframe key={previewReloadKey} src={env.storefrontUrl} title="ornacore-web live preview" />
+            </div>
+            <p className="hp-preview__hint">
+              This is the real ornacore-web homepage, live. Section changes here save immediately —
+              use Refresh above to reload the preview.
+            </p>
           </Card>
         </div>
       )}
@@ -705,6 +916,18 @@ export function HomepageManagementPage() {
           })}
         </div>
       </Modal>
+
+      <MediaPicker
+        open={Boolean(mediaField)}
+        folder="homepage-banners"
+        title="Select Homepage Banner"
+        onClose={() => setMediaField(null)}
+        onSelect={(asset) => {
+          if (!mediaField || !asset) return;
+          setDraftConfigField(mediaField, asset.secureUrl);
+          setMediaField(null);
+        }}
+      />
 
       <Modal
         open={Boolean(removeTarget)}

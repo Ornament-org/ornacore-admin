@@ -1,8 +1,8 @@
 import { apiClient } from "./apiClient.js";
 
 const createResourceService = (basePath) => ({
-  async list(params) {
-    const { data } = await apiClient.get(basePath, { params });
+  async list(params, config) {
+    const { data } = await apiClient.get(basePath, { params, ...config });
     return data;
   },
   async get(id) {
@@ -88,6 +88,10 @@ export const metalRateService = {
     const { data } = await apiClient.put(`/admin/metal-rates/${metalId}`, payload);
     return data;
   },
+  async syncBullions() {
+    const { data } = await apiClient.post("/admin/metal-rates/sync/bullions");
+    return data;
+  },
 };
 export const homepageService = {
   async list(params = {}) {
@@ -104,14 +108,6 @@ export const homepageService = {
   },
   async update(id, payload) {
     const { data } = await apiClient.patch(`/admin/homepages/${id}`, payload);
-    return data;
-  },
-  async publish(id) {
-    const { data } = await apiClient.post(`/admin/homepages/${id}/publish`);
-    return data;
-  },
-  async versions(id) {
-    const { data } = await apiClient.get(`/admin/homepages/${id}/versions`);
     return data;
   },
   async addSection(id, payload) {
@@ -147,6 +143,15 @@ export const productService = {
   addImages: (id, payload) => apiClient.post(`/admin/products/${id}/images`, payload),
   removeImage: (id, imageId) => apiClient.delete(`/admin/products/${id}/images/${imageId}`),
 };
+export const collectionService = createResourceService("/admin/collections");
+export const bannerPlaceholderService = createResourceService("/admin/banner-placeholders");
+export const bannerService = {
+  ...createResourceService("/admin/banners"),
+  async reorder(order) {
+    const { data } = await apiClient.put("/admin/banners/reorder", { order });
+    return data;
+  },
+};
 export const pricingService = createResourceService("/admin/pricing");
 export const pricingRuleService = createResourceService("/admin/pricing/rules");
 export const pricingOverrideService = createResourceService("/admin/pricing/overrides");
@@ -154,6 +159,11 @@ export const inventoryService = {
   ...createResourceService("/admin/inventory"),
   movements: createResourceService("/admin/inventory/movements"),
   adjust: (id, payload) => apiClient.post(`/admin/inventory/${id}/adjust`, payload),
+  // Adjusts by product variant id — the Inventory row is created on first
+  // use, so a variant that's never had stock counted can still be set
+  // directly instead of needing a separate "initialize inventory" step.
+  adjustByVariant: (variantId, payload) =>
+    apiClient.post(`/admin/inventory/variant/${variantId}/adjust`, payload),
 };
 export const orderService = {
   ...createResourceService("/admin/orders"),
@@ -258,6 +268,34 @@ export const mediaService = {
     });
     return data;
   },
+  async list(params = {}) {
+    const { data } = await apiClient.get("/admin/media", { params, notification: false });
+    return data;
+  },
+  async update(id, payload) {
+    const { data } = await apiClient.patch(`/admin/media/${id}`, payload, { notification: false });
+    return data;
+  },
+  async trash(id) {
+    const { data } = await apiClient.delete(`/admin/media/${id}`, { notification: false });
+    return data;
+  },
+  async restore(id) {
+    const { data } = await apiClient.post(`/admin/media/${id}/restore`, null, { notification: false });
+    return data;
+  },
+  async purge(id) {
+    const { data } = await apiClient.delete(`/admin/media/${id}/purge`, { notification: false });
+    return data;
+  },
+  async listFolders() {
+    const { data } = await apiClient.get("/admin/media/folders", { notification: false });
+    return data;
+  },
+  async createFolder(payload) {
+    const { data } = await apiClient.post("/admin/media/folders", payload, { notification: false });
+    return data;
+  },
 };
 
 export const attributeService = {
@@ -275,6 +313,21 @@ export const attributeService = {
   },
   removeValue: async (attributeId, valueId) => {
     const { data } = await apiClient.delete(`/admin/attributes/${attributeId}/values/${valueId}`);
+    return data;
+  },
+};
+
+export const storeSettingsService = {
+  async get() {
+    const { data } = await apiClient.get("/admin/store-settings");
+    return data;
+  },
+  async update(payload) {
+    const { data } = await apiClient.put("/admin/store-settings", payload);
+    return data;
+  },
+  async getBranding() {
+    const { data } = await apiClient.get("/admin/store-settings/branding", { notification: false });
     return data;
   },
 };

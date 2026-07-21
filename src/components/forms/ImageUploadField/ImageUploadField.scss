@@ -1,0 +1,60 @@
+// Styles owned by ImageUploadField.
+
+.image-upload-field {
+  display: grid;
+  gap: 7px;
+}
+
+.image-upload-field__label {
+  color: #52524d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.image-upload-field__control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.image-upload-field__thumb {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  overflow: hidden;
+  color: var(--muted);
+  background: #f5f2ec;
+}
+
+.image-upload-field__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-upload-field__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.image-upload-field__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 8px 12px;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  color: #48443d;
+}
+
+.image-upload-field__remove {
+  color: var(--red);
+}

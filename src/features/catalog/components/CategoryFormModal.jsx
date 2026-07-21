@@ -1,15 +1,11 @@
-import { Image as ImageIcon, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/common/Button.jsx";
 import { FormAlert } from "../../../components/common/FormAlert.jsx";
 import { Modal } from "../../../components/common/Modal.jsx";
 import { StatusToggle } from "../../../components/common/StatusToggle.jsx";
+import { ImageUploadField } from "../../../components/forms/ImageUploadField/ImageUploadField.jsx";
 import { apiErrorMessage } from "../../../services/apiClient.js";
-import { mediaService } from "../../../services/resourceServices.js";
 import { getPersistedMetalId, persistMetalId } from "./categoryMetalSelection.js";
-
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-const acceptedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const initialForm = (record) => ({
   name: record?.name ?? "",
@@ -21,6 +17,8 @@ const initialForm = (record) => ({
   metaTitle: record?.metaTitle ?? "",
   metaDescription: record?.metaDescription ?? "",
   active: record?.status !== "INACTIVE",
+  featuredOnHome: record?.featuredOnHome ?? false,
+  homeSortOrder: record?.homeSortOrder ?? 0,
 });
 
 const getDefaultMetalId = (record, metals) => {
@@ -29,34 +27,21 @@ const getDefaultMetalId = (record, metals) => {
 };
 
 export function CategoryFormModal({ open, record, categories, metals = [], onClose, onSubmit }) {
-  const inputRef = useRef(null);
   const [form, setForm] = useState(() => initialForm(record));
-  const [imageFile, setImageFile] = useState(null);
-  const [removeImage, setRemoveImage] = useState(false);
-  const [dragging, setDragging] = useState(false);
+  const [imageMediaId, setImageMediaId] = useState(record?.image?.id ?? null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(record?.image?.secureUrl ?? null);
+  const [imageTouched, setImageTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const previewUrl = useMemo(
-    () =>
-      imageFile ? URL.createObjectURL(imageFile) : removeImage ? null : record?.image?.secureUrl,
-    [imageFile, record?.image?.secureUrl, removeImage],
-  );
 
   useEffect(() => {
     if (!open) return;
     setForm({ ...initialForm(record), metalId: getDefaultMetalId(record, metals) });
-    setImageFile(null);
-    setRemoveImage(false);
-    setDragging(false);
+    setImageMediaId(record?.image?.id ?? null);
+    setImagePreviewUrl(record?.image?.secureUrl ?? null);
+    setImageTouched(false);
     setError(null);
   }, [metals, open, record]);
-
-  useEffect(
-    () => () => {
-      if (imageFile && previewUrl) URL.revokeObjectURL(previewUrl);
-    },
-    [imageFile, previewUrl],
-  );
 
   const setValue = (name) => (event) => {
     const value = event.target.value;
@@ -74,21 +59,6 @@ export function CategoryFormModal({ open, record, categories, metals = [], onClo
     if (!form.metalId) return categories;
     return categories.filter((category) => String(category.metalId) === String(form.metalId));
   }, [categories, form.metalId]);
-
-  const selectImage = (file) => {
-    if (!file) return;
-    if (!acceptedImageTypes.has(file.type)) {
-      setError("Choose a JPG, PNG, or WebP image.");
-      return;
-    }
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError("Category image cannot exceed 10 MB.");
-      return;
-    }
-    setError(null);
-    setImageFile(file);
-    setRemoveImage(false);
-  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -110,21 +80,11 @@ export function CategoryFormModal({ open, record, categories, metals = [], onClo
         sortOrder: Number(form.sortOrder || 0),
         metaTitle: form.metaTitle.trim() || null,
         metaDescription: form.metaDescription.trim() || null,
+        featuredOnHome: form.featuredOnHome,
+        homeSortOrder: Number(form.homeSortOrder || 0),
         ...(record ? { status: form.active ? "ACTIVE" : "INACTIVE" } : {}),
+        ...(imageTouched ? { mediaId: imageMediaId } : {}),
       };
-
-      if (imageFile) {
-        const uploaded = await mediaService.upload([imageFile], {
-          folder: "categories",
-          ownerType: "CATEGORY",
-          ownerId: record?.id ?? null,
-        });
-        const image = uploaded.data?.[0];
-        if (!image?.id) throw new Error("Category image upload did not return a media record.");
-        payload.mediaId = Number(image.id);
-      } else if (removeImage) {
-        payload.mediaId = null;
-      }
 
       await onSubmit(payload);
       onClose();
@@ -200,76 +160,55 @@ export function CategoryFormModal({ open, record, categories, metals = [], onClo
           </label>
 
           <div className="resource-field resource-field--full">
-            <span>Category image</span>
-            <div className="category-image-editor">
-              <article className={`category-image-preview ${previewUrl ? "has-image" : ""}`}>
-                {previewUrl ? (
-                  <img alt="Category preview" src={previewUrl} />
-                ) : (
-                  <span className="category-image-preview__default">
-                    <ImageIcon size={32} />
-                    <small>Default image</small>
-                  </span>
-                )}
-                <span className="category-image-preview__label">
-                  {imageFile ? "New image" : previewUrl ? "Current image" : "No image"}
-                </span>
-                {previewUrl && (
-                  <button
-                    aria-label="Remove category image"
-                    className="category-image-preview__remove"
-                    type="button"
-                    onClick={() => {
-                      setImageFile(null);
-                      setRemoveImage(true);
-                      if (inputRef.current) inputRef.current.value = "";
-                    }}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
-              </article>
-
-              <button
-                className={`category-image-upload ${dragging ? "is-dragging" : ""}`}
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                onDragEnter={(event) => {
-                  event.preventDefault();
-                  setDragging(true);
-                }}
-                onDragOver={(event) => event.preventDefault()}
-                onDragLeave={(event) => {
-                  event.preventDefault();
-                  setDragging(false);
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setDragging(false);
-                  selectImage(event.dataTransfer.files?.[0]);
-                }}
-              >
-                <span>
-                  <Plus size={25} />
-                </span>
-                <strong>{previewUrl ? "Replace image" : "Upload image"}</strong>
-                <small>Choose or drop</small>
-              </button>
-              <input
-                ref={inputRef}
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                type="file"
-                onChange={(event) => selectImage(event.target.files?.[0])}
-              />
-            </div>
-            <small className="category-image-help">JPG, PNG, or WebP · maximum 10 MB</small>
+            <ImageUploadField
+              label="Category image"
+              previewUrl={imagePreviewUrl}
+              folder="categories"
+              onSelect={(asset) => {
+                setImageMediaId(Number(asset.id));
+                setImagePreviewUrl(asset.secureUrl);
+                setImageTouched(true);
+              }}
+              onRemove={() => {
+                setImageMediaId(null);
+                setImagePreviewUrl(null);
+                setImageTouched(true);
+              }}
+            />
           </div>
 
           <label className="resource-field">
             <span>Sort order</span>
             <input min="0" type="number" value={form.sortOrder} onChange={setValue("sortOrder")} />
           </label>
+
+          <div className="category-status-toggle">
+            <span>
+              <strong>Feature in &quot;Shop by Category&quot;</strong>
+              <small>
+                Shows this category in the curated homepage strip for its metal. Categories with
+                no metal appear on every metal tab.
+              </small>
+            </span>
+            <StatusToggle
+              checked={form.featuredOnHome}
+              activeLabel="Featured"
+              inactiveLabel="Hidden"
+              onChange={(featuredOnHome) => setForm((current) => ({ ...current, featuredOnHome }))}
+            />
+          </div>
+
+          {form.featuredOnHome && (
+            <label className="resource-field">
+              <span>Homepage position</span>
+              <input
+                min="0"
+                type="number"
+                value={form.homeSortOrder}
+                onChange={setValue("homeSortOrder")}
+              />
+            </label>
+          )}
 
           {record && (
             <div className="category-status-toggle">

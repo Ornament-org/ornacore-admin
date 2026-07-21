@@ -69,9 +69,9 @@ body.modal-open {
 
 .resource-field {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   color: #48443d;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -88,13 +88,14 @@ body.modal-open {
 .resource-field select,
 .resource-field textarea {
   width: 100%;
+  min-height: 34px;
   border: 1px solid #ded8ce;
-  border-radius: 9px;
-  padding: 10px 11px;
+  border-radius: 6px;
+  padding: 6px 9px;
   color: #282620;
   outline: 0;
   background: #fff;
-  font: inherit;
+  font-size: 13px;
   font-weight: 500;
 }
 

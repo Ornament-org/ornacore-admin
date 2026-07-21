@@ -4,13 +4,34 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  color: #b23f37;
-  border: 1px solid #f2c9c5;
   border-radius: 9px;
   padding: 11px 12px;
-  background: #fff2f1;
   font-size: 11px;
   line-height: 1.45;
+
+  a {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+}
+
+.form-alert--error {
+  color: #b23f37;
+  border: 1px solid #f2c9c5;
+  background: #fff2f1;
+}
+
+.form-alert--success {
+  color: #1f7a4d;
+  border: 1px solid #bfe3cd;
+  background: #f0fbf4;
+}
+
+.form-alert--info {
+  color: #8a6a1f;
+  border: 1px solid #eedcab;
+  background: #fdf8ea;
 }
 
 .form-alert svg {

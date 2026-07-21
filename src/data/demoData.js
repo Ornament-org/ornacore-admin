@@ -232,6 +232,7 @@ export const inventoryRows = productRows.map((product, index) => ({
   product: product.name,
   designCode: product.designCode,
   variant: product.variant,
+  onHand: product.stock,
   available: product.stock,
   reserved: [4, 2, 1, 0][index],
   threshold: [10, 8, 5, 6][index],

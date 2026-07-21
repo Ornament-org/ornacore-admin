@@ -1,7 +1,8 @@
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { useState } from "react";
+import { MediaPicker } from "../../../components/media/MediaPicker/MediaPicker.jsx";
 
 const MAX_VARIANT_IMAGES = 5;
-const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function Field({ label, required = false, hint, className, children }) {
   return (
@@ -39,19 +40,9 @@ export function VariantCard({
   onRemoveNewImage,
   onRemoveExistingImage,
 }) {
-  const totalImages = (variant.existingImages?.length ?? 0) + (variant.imageFiles?.length ?? 0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const totalImages = (variant.existingImages?.length ?? 0) + (variant.newImages?.length ?? 0);
   const isOpen = !collapsible || expanded;
-
-  const handleFileInput = (event) => {
-    const files = Array.from(event.target.files ?? []);
-    const invalid = files.find((file) => !ACCEPTED_IMAGE_TYPES.has(file.type));
-    if (invalid) {
-      event.target.value = "";
-      return;
-    }
-    onAddImages(files.slice(0, Math.max(MAX_VARIANT_IMAGES - totalImages, 0)));
-    event.target.value = "";
-  };
 
   const handleHeaderKeyDown = (event) => {
     if (!collapsible) return;
@@ -203,32 +194,38 @@ export function VariantCard({
                     </button>
                   </article>
                 ))}
-                {(variant.imageFiles ?? []).map((entry, index) => (
-                  <article className="variant-media-tile" key={entry.id}>
-                    <img alt={`Variant preview ${index + 1}`} src={entry.previewUrl} />
+                {(variant.newImages ?? []).map((entry, index) => (
+                  <article className="variant-media-tile" key={entry.mediaId}>
+                    <img alt={`Variant preview ${index + 1}`} src={entry.secureUrl} />
                     <button
                       aria-label={`Remove selected variant image ${index + 1}`}
                       type="button"
-                      onClick={() => onRemoveNewImage(entry.id)}
+                      onClick={() => onRemoveNewImage(entry.mediaId)}
                     >
                       <X size={12} />
                     </button>
                   </article>
                 ))}
                 {totalImages < MAX_VARIANT_IMAGES && (
-                  <label className="variant-media-upload">
+                  <button type="button" className="variant-media-upload" onClick={() => setPickerOpen(true)}>
                     <Plus size={16} />
                     <span>Add image</span>
-                    <input
-                      accept="image/jpeg,image/png,image/webp"
-                      hidden
-                      multiple
-                      type="file"
-                      onChange={handleFileInput}
-                    />
-                  </label>
+                  </button>
                 )}
               </div>
+
+              <MediaPicker
+                open={pickerOpen}
+                onClose={() => setPickerOpen(false)}
+                folder="products"
+                multiple
+                title="Select variant images"
+                onSelect={(assets) => {
+                  const room = Math.max(MAX_VARIANT_IMAGES - totalImages, 0);
+                  const picked = (assets ?? []).slice(0, room);
+                  if (picked.length) onAddImages(picked.map((asset) => ({ mediaId: asset.id, secureUrl: asset.secureUrl })));
+                }}
+              />
             </div>
           )}
         </>

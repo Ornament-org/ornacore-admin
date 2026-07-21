@@ -4,20 +4,24 @@ import {
   ChevronDown,
   Coins,
   Cuboid,
+  Download,
   Gem,
   IndianRupee,
   Plus,
   Save,
+  ShoppingBag,
   Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { usePermissions } from "../../auth/permissions.js";
-import { khatabookService } from "../../../services/resourceServices.js";
+import { khatabookService, orderService } from "../../../services/resourceServices.js";
 import { formatMoney, formatQuantity } from "./khatabookFormatters.js";
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const emptyItem = (tunch = "") => ({ itemName: "", grossWeight: "", tunch });
+const emptyItem = (tunch = "") => ({ itemName: "", grossWeight: "", tunch, sourceOrderId: null });
+
+const PENDING_ORDER_STATUSES_EXCLUDED = ["DELIVERED", "CANCELLED"];
 
 const today = () => new Date().toISOString().slice(0, 10);
 const toNumber = (v) => (v === "" || v == null ? 0 : Number(v));
@@ -69,11 +73,33 @@ export function CreateKhatabookOrder({
   const [creditError, setCreditError] = useState(null);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
+  const [pendingOrders, setPendingOrders] = useState([]);
+  const [loadingPending, setLoadingPending] = useState(true);
 
   useEffect(() => {
     if (!form.metalId && firstMetalId)
       setForm((f) => ({ ...f, metalId: String(firstMetalId) }));
   }, [firstMetalId, form.metalId]);
+
+  // Orders the shopkeeper already placed through the web app, not yet
+  // delivered — admin can pull these into this delivery instead of re-typing them.
+  useEffect(() => {
+    if (!shopkeeperId) return;
+    let alive = true;
+    setLoadingPending(true);
+    orderService
+      .list({ shopkeeperId, pageSize: 50, sortBy: "createdAt", sortDirection: "DESC" })
+      .then((res) => {
+        if (!alive) return;
+        const rows = (res.data ?? []).filter(
+          (o) => !PENDING_ORDER_STATUSES_EXCLUDED.includes(o.status),
+        );
+        setPendingOrders(rows);
+      })
+      .catch(() => { if (alive) setPendingOrders([]); })
+      .finally(() => { if (alive) setLoadingPending(false); });
+    return () => { alive = false; };
+  }, [shopkeeperId]);
 
   const selectedSummary = useMemo(
     () => metals.find((r) => String(r.metal.id) === String(form.metalId)),
@@ -91,6 +117,43 @@ export function CreateKhatabookOrder({
       ),
     [items],
   );
+
+  // An order is "pulled" as soon as any of its items sit in the table, even if
+  // the weight still needs filling in — used to grey out the Pull button.
+  const pulledOrderIds = useMemo(
+    () => new Set(items.map((it) => it.sourceOrderId).filter(Boolean)),
+    [items],
+  );
+
+  // Only orders whose pulled items are actually complete (and therefore part
+  // of `validItems`) get marked DELIVERED on save.
+  const submittableSourceOrderIds = useMemo(
+    () => [...new Set(validItems.map((it) => it.sourceOrderId).filter(Boolean))],
+    [validItems],
+  );
+
+  const pullOrder = (webOrder) => {
+    const pulledItems = (webOrder.items ?? []).map((item) => {
+      const variant = item.variant;
+      const weightEach = toNumber(variant?.weightGrams);
+      const grossWeight = weightEach ? q(weightEach * toNumber(item.quantity)) : "";
+      const tunch =
+        variant?.tunch != null && variant.tunch !== "" ? String(variant.tunch) : form.defaultTunch;
+      return {
+        itemName: `${item.productNameSnapshot ?? "Item"} (${item.skuSnapshot ?? "-"})`,
+        grossWeight,
+        tunch,
+        sourceOrderId: webOrder.id,
+      };
+    });
+    if (!pulledItems.length) return;
+    setItems((its) => {
+      const withoutBlankRow = its.filter(
+        (it) => it.itemName.trim() || toNumber(it.grossWeight) > 0 || it.sourceOrderId,
+      );
+      return [...withoutBlankRow, ...pulledItems];
+    });
+  };
 
   const localFineDelivered = useMemo(
     () => q(validItems.reduce((s, it) => s + Number(fineWeight(it)), 0)),
@@ -117,6 +180,7 @@ export function CreateKhatabookOrder({
         grossWeight: Number(it.grossWeight),
         tunch: Number(it.tunch),
       })),
+      sourceOrderIds: submittableSourceOrderIds,
       collection: {
         metalReceived: toNumber(metalReceived),
         cashReceived: cashAmount,
@@ -125,7 +189,7 @@ export function CreateKhatabookOrder({
         notes: notes.trim() || undefined,
       },
     };
-  }, [collectionRate, form, shopkeeperId, validItems]);
+  }, [collectionRate, form, shopkeeperId, submittableSourceOrderIds, validItems]);
 
   // live preview (debounced 250 ms)
   useEffect(() => {
@@ -329,6 +393,42 @@ export function CreateKhatabookOrder({
         </label>
       </div>
 
+      {/* ── Pending web orders ───────────────────────────────────────────────── */}
+      {(loadingPending || pendingOrders.length > 0) && (
+        <div className="khatabook-create__pending">
+          <div className="khatabook-create__pending-head">
+            <h3><ShoppingBag size={14} /> Pending Web Orders</h3>
+            <span>Requested by the shopkeeper through the app — pull them into this delivery.</span>
+          </div>
+          {loadingPending ? (
+            <div className="khatabook-create__pending-empty">Loading…</div>
+          ) : (
+            <div className="khatabook-create__pending-list">
+              {pendingOrders.map((webOrder) => {
+                const pulled = pulledOrderIds.has(webOrder.id);
+                const itemCount = webOrder.items?.length ?? 0;
+                return (
+                  <div className="khatabook-create__pending-row" key={webOrder.id}>
+                    <div className="khatabook-create__pending-info">
+                      <strong>{webOrder.orderNumber}</strong>
+                      <span>{itemCount} item{itemCount === 1 ? "" : "s"} · {webOrder.status}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={pulled}
+                      onClick={() => pullOrder(webOrder)}
+                    >
+                      <Download size={14} />
+                      {pulled ? "Pulled" : "Pull into this order"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Items table ────────────────────────────────────────────────────── */}
       <div className="khatabook-create__items-head">
         <h3>Items Delivered</h3>
@@ -347,13 +447,16 @@ export function CreateKhatabookOrder({
         {items.map((item, idx) => {
           const pi = preview?.items?.[idx];
           return (
-            <div className="khatabook-create__row" key={idx}>
+            <div className={`khatabook-create__row${item.sourceOrderId ? " is-pulled" : ""}`} key={idx}>
               <span>{idx + 1}</span>
-              <input
-                placeholder="Item name"
-                value={item.itemName}
-                onChange={(e) => updateItem(idx, "itemName", e.target.value)}
-              />
+              <div className="khatabook-create__item-name">
+                <input
+                  placeholder="Item name"
+                  value={item.itemName}
+                  onChange={(e) => updateItem(idx, "itemName", e.target.value)}
+                />
+                {item.sourceOrderId && <small>from web order</small>}
+              </div>
               <input
                 type="number" min="0" step="0.001"
                 value={item.grossWeight}

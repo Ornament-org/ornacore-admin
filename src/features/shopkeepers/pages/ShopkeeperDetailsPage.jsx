@@ -61,7 +61,7 @@ export function ShopkeeperDetailsPage() {
     let alive = true;
     loadDetails();
     metalService
-      .list({ pageSize: 100 })
+      .list({ isActive: true, pageSize: 100 })
       .then((response) => { if (alive) setMetals(response.data ?? []); })
       .catch(() => { if (alive) setMetals([]); });
 

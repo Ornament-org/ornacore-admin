@@ -1,123 +1,83 @@
-import {
-  Building2,
-  Flame,
-  Gift,
-  Grid3X3,
-  Headphones,
-  Image,
-  LayoutGrid,
-  LineChart,
-  Search,
-  ShoppingBag,
-  Sparkles,
-  Star,
-  ToggleLeft,
-  TrendingUp,
-} from "lucide-react";
+import { Building2, Grid3X3, Image, LayoutGrid, LineChart, TrendingUp } from "lucide-react";
 
+// Every entry here maps 1:1 to a real component on the storefront homepage —
+// what you see in this list is exactly what's live, nothing more. If you
+// don't see a section here, it doesn't exist as a manageable block on the
+// site (it may be fixed page chrome, like the header search bar).
 export const SECTION_TYPES = {
-  SEARCH_BAR: {
-    label: "Search Bar",
-    description: "Global search for products, designs, SKU",
-    icon: Search,
+  BANNERS: {
+    label: "Promotional Banners",
+    description: "Rotating hero banner carousel",
+    icon: Image,
     audiences: ["B2B", "B2C"],
-    fields: [{ name: "placeholder", label: "Placeholder Text", input: "text" }],
+    fields: [
+      {
+        name: "bannerIds",
+        label: "Banners to show (pick a metal, then choose from its banners)",
+        input: "bannersByMetal",
+      },
+    ],
   },
-  METAL_SWITCHER: {
-    label: "Metal Switcher",
-    description: "Switch between Gold, Silver, Diamond",
-    icon: ToggleLeft,
+  RATE_BANNER: {
+    label: "Today's Metal Rates",
+    description: "Live gold & silver rate card",
+    icon: LineChart,
     audiences: ["B2B", "B2C"],
     fields: [],
   },
-  RATE_BANNER: {
-    label: "Gold Rate Banner",
-    description: "Today's gold rate and market update",
-    icon: LineChart,
+  COLLECTIONS: {
+    label: "Our Collections",
+    description: "Curated product/category collections",
+    icon: Grid3X3,
     audiences: ["B2B", "B2C"],
-    fields: [{ name: "showChange", label: "Show daily change", input: "toggle" }],
-  },
-  HERO_BANNER: {
-    label: "Hero Banner",
-    description: "Large promotional hero banner",
-    icon: Image,
-    audiences: ["B2C"],
     fields: [
-      { name: "imageUrl", label: "Image URL", input: "text" },
-      { name: "ctaText", label: "CTA Text", input: "text" },
-      { name: "ctaTarget", label: "CTA Target", input: "text" },
-    ],
-  },
-  FESTIVAL_BANNER: {
-    label: "Festival Banner",
-    description: "Seasonal or festival campaign banner",
-    icon: Sparkles,
-    audiences: ["B2C"],
-    fields: [
-      { name: "imageUrl", label: "Image URL", input: "text" },
-      { name: "ctaText", label: "CTA Text", input: "text" },
+      {
+        name: "collectionIds",
+        label: "Collections to show on the homepage",
+        input: "collections",
+      },
+      {
+        name: "productsPerRow",
+        label: "Product cards per row (for hand-picked-product collections)",
+        input: "number",
+      },
+      {
+        name: "productRows",
+        label: "Rows of products to show before \"View All\"",
+        input: "number",
+      },
     ],
   },
   QUICK_CATEGORIES: {
-    label: "Quick Categories",
-    description: "Top categories shortcuts",
+    label: "Shop by Category",
+    description: "Featured category shortcuts — required on every homepage",
     icon: LayoutGrid,
     audiences: ["B2B", "B2C"],
-    fields: [{ name: "maxItems", label: "Max Items", input: "number" }],
+    fields: [
+      {
+        name: "showAllCategories",
+        label: "Show every category automatically (skip the hand-picked list below)",
+        input: "toggle",
+      },
+      {
+        name: "categoryIds",
+        label: "Categories to show (pick a metal, then choose from its categories)",
+        input: "categoriesByMetal",
+      },
+      { name: "maxItems", label: "Max categories to show", input: "number" },
+    ],
   },
   TRENDING_PRODUCTS: {
-    label: "Trending Products",
-    description: "Popular and trending products",
+    label: "Top Picks for Your Business",
+    description: "Featured product row",
     icon: TrendingUp,
     audiences: ["B2B"],
-    fields: [{ name: "limit", label: "Product Limit", input: "number" }],
-  },
-  POPULAR_PRODUCTS: {
-    label: "Popular Products",
-    description: "Best selling products for customers",
-    icon: Flame,
-    audiences: ["B2C"],
-    fields: [{ name: "limit", label: "Product Limit", input: "number" }],
-  },
-  RECENTLY_ADDED: {
-    label: "Recently Added",
-    description: "Newest catalog additions",
-    icon: Star,
-    audiences: ["B2B", "B2C"],
-    fields: [{ name: "limit", label: "Product Limit", input: "number" }],
-  },
-  COLLECTIONS: {
-    label: "Collections",
-    description: "Curated product collections",
-    icon: Grid3X3,
-    audiences: ["B2C"],
-    fields: [],
-  },
-  RECOMMENDED_PRODUCTS: {
-    label: "Recommended Products",
-    description: "Personalized recommendations",
-    icon: ShoppingBag,
-    audiences: ["B2C"],
-    fields: [{ name: "limit", label: "Product Limit", input: "number" }],
-  },
-  OFFERS: {
-    label: "Offers",
-    description: "Active offers and discounts",
-    icon: Gift,
-    audiences: ["B2C"],
-    fields: [],
+    fields: [{ name: "limit", label: "Max products to show", input: "number" }],
   },
   TRUST_SECTION: {
-    label: "Trust Section",
-    description: "Our business trust and assurance",
+    label: "Why Partner With Us?",
+    description: "Trust badges and business assurances",
     icon: Building2,
-    audiences: ["B2B", "B2C"],
-    fields: [],
-  },
-  SUPPORT_SECTION: {
-    label: "Support Section",
-    description: "Help & support information",
-    icon: Headphones,
     audiences: ["B2B", "B2C"],
     fields: [],
   },

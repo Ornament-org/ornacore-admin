@@ -4,9 +4,24 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import "./RowActions.scss";
 
+// Mirrors the backend's allowed "approve from" statuses (see the `approve`
+// handler in shopkeeper.controller.js) — PENDING_REVIEW, REJECTED, SUSPENDED
+// and DRAFT can all be approved directly. BLOCKED is deliberately excluded:
+// the backend has no path back from it via this action.
+const APPROVABLE_STATUSES = ["PENDING_REVIEW", "REJECTED", "SUSPENDED", "DRAFT"];
+
 const PENDING_MENU_ITEMS = [
   { label: "Approve", icon: CheckCircle2, action: "approve" },
   { label: "Reject", icon: XCircle, action: "reject" },
+  { label: "Edit", icon: Edit2, action: "edit" },
+  { label: "Delete", icon: Trash2, action: "delete", danger: true },
+];
+
+// Suspended/Rejected/Draft shops can be resumed straight back to Approved —
+// without this, there's no way to reverse a suspension from the list view.
+const RESUMABLE_MENU_ITEMS = [
+  { label: "View", icon: Eye, action: "view" },
+  { label: "Approve", icon: CheckCircle2, action: "approve" },
   { label: "Edit", icon: Edit2, action: "edit" },
   { label: "Delete", icon: Trash2, action: "delete", danger: true },
 ];
@@ -25,7 +40,8 @@ export function RowActions({ row, onAction }) {
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
   const isPending = row.status === "PENDING_REVIEW";
-  const menuItems = isPending ? PENDING_MENU_ITEMS : DEFAULT_MENU_ITEMS;
+  const isResumable = !isPending && APPROVABLE_STATUSES.includes(row.status);
+  const menuItems = isPending ? PENDING_MENU_ITEMS : isResumable ? RESUMABLE_MENU_ITEMS : DEFAULT_MENU_ITEMS;
 
   useEffect(() => {
     if (!open) return;

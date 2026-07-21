@@ -25,6 +25,7 @@ export function PreviewListPage({
   statusOptions = [],
   filterTabs,
   rowActions,
+  onRowClick,
   primaryAction = "Add New",
   onPrimaryAction,
   hidePrimaryAction = false,
@@ -185,6 +186,7 @@ export function PreviewListPage({
             columns={columns}
             meta={resource.meta}
             onPageChange={setPage}
+            onRowClick={onRowClick}
             rowActions={typeof rowActions === "function" ? rowActions({ refresh }) : rowActions}
             rows={resource.rows}
             renderContext={{ refresh }}

@@ -1,7 +1,7 @@
 import { createSlice, nanoid } from "@reduxjs/toolkit";
 
-const MAX_VISIBLE_NOTIFICATIONS = 5;
-const DEFAULT_DURATION_MS = 5200;
+const MAX_VISIBLE_NOTIFICATIONS = 3;
+const DEFAULT_DURATION_MS = 3000;
 
 const normalizeNotification = (payload) => ({
   id: payload.id ?? nanoid(),
@@ -21,7 +21,18 @@ const notificationSlice = createSlice({
   },
   reducers: {
     pushNotification(state, action) {
-      state.items.unshift(normalizeNotification(action.payload));
+      const next = normalizeNotification(action.payload);
+      // Collapse repeats of the same message (e.g. a background call retrying
+      // and failing the same way) into one — bump it back to the front and
+      // restart its timer instead of stacking a duplicate on screen.
+      const duplicate = state.items.find(
+        (item) => item.type === next.type && item.message === next.message,
+      );
+      if (duplicate) {
+        state.items = state.items.filter((item) => item.id !== duplicate.id);
+        next.id = duplicate.id;
+      }
+      state.items.unshift(next);
       state.items = state.items.slice(0, MAX_VISIBLE_NOTIFICATIONS);
     },
     dismissNotification(state, action) {
@@ -49,7 +60,7 @@ export const notifyError = (message, options = {}) =>
     type: "error",
     title: options.title ?? "Action failed",
     message,
-    duration: options.duration ?? 7200,
+    duration: options.duration ?? 4500,
     ...options,
   });
 

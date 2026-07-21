@@ -11,6 +11,7 @@ export function DataTable({
   rowActions = [],
   meta,
   onPageChange,
+  onRowClick,
   renderContext,
 }) {
   const [openRow, setOpenRow] = useState(null);
@@ -42,7 +43,11 @@ export function DataTable({
             const key = getRowKey(row);
             const actions = rowActions.filter((action) => !action.hidden?.(row));
             return (
-              <tr key={key}>
+              <tr
+                key={key}
+                className={onRowClick ? "data-table__row--clickable" : undefined}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map((column) => (
                   <td key={column.key}>
                     {column.render
@@ -50,7 +55,7 @@ export function DataTable({
                       : row[column.key]}
                   </td>
                 ))}
-                <td className="data-table__actions">
+                <td className="data-table__actions" onClick={(event) => event.stopPropagation()}>
                   <button
                     className="icon-button icon-button--subtle"
                     aria-label="Open row actions"
@@ -90,7 +95,7 @@ export function DataTable({
       </table>
       <div className="table-pagination">
         <span>
-          Showing {rows.length ? (meta?.page - 1) * meta.pageSize + 1 : 0}–
+          Showing {rows.length && meta ? (meta.page - 1) * meta.pageSize + 1 : rows.length ? 1 : 0}–
           {meta ? Math.min(meta.page * meta.pageSize, meta.totalItems) : rows.length} of{" "}
           {meta?.totalItems ?? rows.length}
         </span>

@@ -125,6 +125,12 @@
     color: var(--ink-soft);
     font-size: 11px;
   }
+
+  em {
+    color: var(--muted);
+    font-size: 10px;
+    font-style: normal;
+  }
 }
 
 @include respond-to-tablet {

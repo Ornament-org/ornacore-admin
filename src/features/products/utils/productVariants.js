@@ -63,7 +63,7 @@ export function blankVariant({ attributes = null, attributeValueIds = [], name =
     basePrice: "",
     openingStock: "0",
     reorderLevel: "5",
-    imageFiles: [],
+    newImages: [],
     existingImages: [],
     removedImageIds: [],
   };

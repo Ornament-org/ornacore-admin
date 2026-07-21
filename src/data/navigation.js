@@ -5,6 +5,8 @@ import {
   ClipboardList,
   Flag,
   Gem,
+  Image,
+  Images,
   LayoutDashboard,
   LayoutTemplate,
   PackageSearch,
@@ -38,16 +40,12 @@ export const navigationGroups = [
         ],
       },
       {
-        label: "Catalog",
+        label: "Metals",
         icon: Gem,
-        path: "/catalog/metals",
+        path: "/metals",
         children: [
-          { label: "Metals", path: "/catalog/metals" },
-          { label: "Metal Rates", path: "/catalog/metal-rates" },
-          { label: "Categories", path: "/catalog/categories" },
-          { label: "Attributes", path: "/catalog/attributes" },
-          { label: "Collections", path: "/catalog/collections" },
-          { label: "Banners", path: "/catalog/banners" },
+          { label: "Metals", path: "/metals" },
+          { label: "Metal Rates", path: "/metals/rates" },
         ],
       },
       {
@@ -59,6 +57,9 @@ export const navigationGroups = [
           { label: "Create Product", path: "/products/create" },
           { label: "Draft Products", path: "/products/draft" },
           { label: "Out of Stock", path: "/products/out-of-stock" },
+          { label: "Categories", path: "/products/categories" },
+          { label: "Attributes", path: "/products/attributes" },
+          { label: "Collections", path: "/products/collections" },
         ],
       },
       {
@@ -78,7 +79,6 @@ export const navigationGroups = [
         children: [
           { label: "Stock Overview", path: "/inventory" },
           { label: "Stock Movements", path: "/inventory/movements" },
-          { label: "Stock Adjustment", path: "/inventory/adjustment" },
         ],
       },
       {
@@ -116,6 +116,15 @@ export const navigationGroups = [
         icon: LayoutTemplate,
         path: "/cms/homepage",
       },
+      {
+        label: "Banner Management",
+        icon: Images,
+        path: "/cms/banners",
+        children: [
+          { label: "Banners", path: "/cms/banners" },
+          { label: "Banner Placements", path: "/cms/banner-placements" },
+        ],
+      },
     ],
   },
   {
@@ -143,6 +152,7 @@ export const navigationGroups = [
         ],
       },
       { label: "Audit Logs", icon: ScrollText, path: "/audit-logs" },
+      { label: "Media Library", icon: Image, path: "/media" },
       { label: "Feature Flags", icon: Flag, path: "/settings/feature-flags" },
       { label: "Settings", icon: Settings, path: "/settings" },
     ],

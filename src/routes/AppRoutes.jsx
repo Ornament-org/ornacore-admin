@@ -57,6 +57,10 @@ const InventoryPage = loadNamed(
   "InventoryPage",
 );
 const OrdersPage = loadNamed(() => import("../features/orders/pages/OrdersPage.jsx"), "OrdersPage");
+const OrderDetailsPage = loadNamed(
+  () => import("../features/orders/pages/OrderDetailsPage.jsx"),
+  "OrderDetailsPage",
+);
 const PaymentsPage = loadNamed(
   () => import("../features/payments/pages/PaymentsPage.jsx"),
   "PaymentsPage",
@@ -81,6 +85,10 @@ const SettingsPage = loadNamed(
 const FeatureFlagsPage = loadNamed(
   () => import("../features/settings/pages/FeatureFlagsPage.jsx"),
   "FeatureFlagsPage",
+);
+const MediaLibraryPage = loadNamed(
+  () => import("../features/media/pages/MediaLibraryPage.jsx"),
+  "MediaLibraryPage",
 );
 const AttributesPage = loadNamed(
   () => import("../features/catalog/pages/AttributesPage.jsx"),
@@ -118,17 +126,11 @@ export function AppRoutes() {
               element={<ShopkeepersPage title="Suspended Shopkeepers" />}
             />
 
-            <Route path="/catalog/metals" element={<CatalogPage title="Metals" />} />
-            <Route path="/catalog/metal-rates" element={<MetalRatesPage />} />
+            <Route path="/metals" element={<CatalogPage title="Metals" />} />
+            <Route path="/metals/rates" element={<MetalRatesPage />} />
             <Route path="/cms/homepage" element={<HomepageManagementPage />} />
-            <Route path="/catalog/categories" element={<CatalogPage title="Categories" />} />
-            <Route
-              path="/catalog/subcategories"
-              element={<Navigate to="/catalog/categories" replace />}
-            />
-            <Route path="/catalog/collections" element={<CatalogPage title="Collections" />} />
-            <Route path="/catalog/banners" element={<CatalogPage title="Banners" />} />
-            <Route path="/catalog/attributes" element={<AttributesPage />} />
+            <Route path="/cms/banners" element={<CatalogPage title="Banners" />} />
+            <Route path="/cms/banner-placements" element={<CatalogPage title="Banner Placements" />} />
 
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/create" element={<CreateProductPage />} />
@@ -137,6 +139,33 @@ export function AppRoutes() {
             <Route
               path="/products/out-of-stock"
               element={<ProductsPage title="Out of Stock Products" />}
+            />
+            <Route path="/products/categories" element={<CatalogPage title="Categories" />} />
+            <Route
+              path="/products/subcategories"
+              element={<Navigate to="/products/categories" replace />}
+            />
+            <Route path="/products/attributes" element={<AttributesPage />} />
+            <Route path="/products/collections" element={<CatalogPage title="Collections" />} />
+
+            {/* Old Catalog-group paths, kept as redirects so no bookmarked link breaks */}
+            <Route path="/catalog/metals" element={<Navigate to="/metals" replace />} />
+            <Route path="/catalog/metal-rates" element={<Navigate to="/metals/rates" replace />} />
+            <Route
+              path="/catalog/categories"
+              element={<Navigate to="/products/categories" replace />}
+            />
+            <Route
+              path="/catalog/subcategories"
+              element={<Navigate to="/products/categories" replace />}
+            />
+            <Route
+              path="/catalog/attributes"
+              element={<Navigate to="/products/attributes" replace />}
+            />
+            <Route
+              path="/catalog/collections"
+              element={<Navigate to="/products/collections" replace />}
             />
 
             <Route path="/pricing/groups" element={<Navigate to="/pricing/products" replace />} />
@@ -152,10 +181,9 @@ export function AppRoutes() {
               path="/inventory/movements"
               element={<InventoryPage title="Stock Movements" />}
             />
-            <Route
-              path="/inventory/adjustment"
-              element={<InventoryPage title="Stock Adjustment" />}
-            />
+            {/* Stock Adjustment used to be its own route, but it rendered the exact same
+                table as Stock Overview — adjusting stock is already a row action there. */}
+            <Route path="/inventory/adjustment" element={<Navigate to="/inventory" replace />} />
 
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/requested" element={<OrdersPage title="Requested Orders" />} />
@@ -164,6 +192,7 @@ export function AppRoutes() {
             <Route path="/orders/dispatched" element={<OrdersPage title="Dispatched Orders" />} />
             <Route path="/orders/delivered" element={<OrdersPage title="Delivered Orders" />} />
             <Route path="/orders/cancelled" element={<OrdersPage title="Cancelled Orders" />} />
+            <Route path="/orders/:id" element={<OrderDetailsPage />} />
 
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/payments/due" element={<PaymentsPage title="Due Amounts" />} />
@@ -182,6 +211,7 @@ export function AppRoutes() {
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/settings/feature-flags" element={<FeatureFlagsPage />} />
+            <Route path="/media" element={<MediaLibraryPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

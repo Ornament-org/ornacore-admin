@@ -4,13 +4,13 @@
 
 .surface-card {
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
 }
 
 .surface-card--padded {
-  padding: 19px;
+  padding: 14px;
 }
 
 .list-card {
@@ -20,7 +20,7 @@
 
 .card-heading {
   display: flex;
-  min-height: 40px;
+  min-height: 36px;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
@@ -28,14 +28,14 @@
 
 .card-heading h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: -0.015em;
 }
 
 .card-heading p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 @include respond-to-mobile {

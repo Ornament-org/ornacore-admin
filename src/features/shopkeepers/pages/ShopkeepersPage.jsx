@@ -86,7 +86,7 @@ export function ShopkeepersPage({ title = "All Shopkeepers" }) {
 
   useEffect(() => {
     metalService
-      .list({ pageSize: 100 })
+      .list({ isActive: true, pageSize: 100 })
       .then((r) => setMetals(Array.isArray(r) ? r : (r?.data ?? [])))
       .catch(() => setMetals([]));
   }, []);

@@ -95,7 +95,7 @@ export function ResourceFormModal({
                     setValues((current) => ({ ...current, [field.name]: event.target.value }))
                   }
                 >
-                  <option value="">Select {field.label.toLowerCase()}</option>
+                  <option value="">{field.emptyOptionLabel ?? `Select ${field.label.toLowerCase()}`}</option>
                   {(options ?? []).map((option) => (
                     <option key={option.value ?? option} value={option.value ?? option}>
                       {option.label ?? option}
