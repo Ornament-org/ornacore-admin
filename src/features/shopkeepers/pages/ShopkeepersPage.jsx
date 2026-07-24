@@ -232,7 +232,7 @@ export function ShopkeepersPage() {
   };
 
   return (
-    <div className="page-stack">
+    <div className="page-stack shopkeepers-page">
       <PageHeader
         eyebrow="Shopkeepers"
         title="All Shopkeepers"
@@ -242,9 +242,9 @@ export function ShopkeepersPage() {
             <Button variant="secondary" size="sm" icon={Download}>
               Export
             </Button>
-            <Button size="sm" icon={Plus} onClick={() => navigate("/shopkeepers/new")}>
+            {/* <Button size="sm" icon={Plus} onClick={() => navigate("/shopkeepers/new")}>
               Add Shopkeeper
-            </Button>
+            </Button> */}
           </>
         }
       />

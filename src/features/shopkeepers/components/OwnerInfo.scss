@@ -1,7 +1,7 @@
 .sk-owner {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 
   &__row {
     display: flex;
@@ -9,10 +9,35 @@
     gap: 5px;
     font-size: 12px;
     color: var(--ink-soft);
+    min-width: 0;
 
     &--muted {
       font-size: 11px;
       color: var(--muted);
+    }
+  }
+}
+
+@media (max-width: 560px) {
+  .sk-owner {
+    gap: 2px;
+
+    &__row {
+      font-size: 11px;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      svg {
+        width: 10px;
+        height: 10px;
+        flex: 0 0 auto;
+      }
+
+      &--muted {
+        font-size: 10px;
+      }
     }
   }
 }

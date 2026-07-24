@@ -4,12 +4,13 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 20px;
+  gap: 10px;
+  min-height: 86px;
+  padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: 0 8px 22px rgba(45, 38, 27, 0.045);
 
   &__body {
     display: flex;
@@ -28,8 +29,8 @@
 
   &__value {
     display: block;
-    margin-top: 6px;
-    font-size: 30px;
+    margin-top: 3px;
+    font-size: 24px;
     font-weight: 800;
     letter-spacing: -0.04em;
     color: var(--ink);
@@ -37,18 +38,18 @@
   }
 
   &__subtitle {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--muted);
-    margin-top: 3px;
+    margin-top: 1px;
   }
 
   &__icon {
     display: inline-grid;
-    width: 42px;
-    height: 42px;
+    width: 34px;
+    height: 34px;
     flex: 0 0 auto;
     place-items: center;
-    border-radius: 11px;
+    border-radius: 8px;
     border: 1px solid var(--line);
     background: var(--surface-soft);
     color: var(--muted);
@@ -86,27 +87,43 @@
 
 @include respond-to-tablet {
   .stat-card {
-    padding: 16px;
-    border-radius: 12px;
+    min-height: 78px;
+    padding: 12px;
 
     &__value {
-      font-size: 26px;
+      font-size: 22px;
     }
   }
 }
 
 @include respond-to-mobile {
   .stat-card {
-    padding: 14px;
+    min-height: 72px;
+    padding: 10px;
 
     &__value {
-      font-size: 22px;
+      font-size: 20px;
+    }
+
+    &__title {
+      font-size: 8.5px;
+      letter-spacing: 0.045em;
+    }
+
+    &__subtitle {
+      font-size: 9px;
+      line-height: 1.25;
     }
 
     &__icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+
+      svg {
+        width: 15px;
+        height: 15px;
+      }
     }
   }
 }

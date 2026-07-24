@@ -14,11 +14,18 @@ import { SkeletonKhatabook } from "../../../components/skeleton/SkeletonKhataboo
 import { useKhatabookMetals, useKhatabookOrders, useKhatabookRefresh } from "../hooks/useKhatabookData.js";
 import "./Khatabook.scss";
 
-export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view = "orders" }) {
+export function KhatabookPage({
+  shopkeeperId,
+  shopName,
+  initialSourceOrderId,
+  onCollectionAdded,
+  onSourceOrderConsumed,
+  view = "orders",
+}) {
   const [selectedMetalId, setSelectedMetalId] = useState("");
   const [search, setSearch]                   = useState("");
   const [expandedOrderId, setExpandedOrderId] = useState(null);
-  const [creating, setCreating]               = useState(false);
+  const [creating, setCreating]               = useState(() => view === "orders" && Boolean(initialSourceOrderId));
   const [ledgerOrder, setLedgerOrder]             = useState(null);
   const [ledgerRows, setLedgerRows]               = useState([]);
   const [ledgerLoading, setLedgerLoading]         = useState(false);
@@ -38,12 +45,15 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
   useEffect(() => {
     if (view !== "ledger") return;
     let alive = true;
-    setLedgerMetalsLoading(true);
-    metalService
-      .list({ pageSize: 100, isActive: true })
-      .then((res) => { if (alive) setLedgerMetals(res.data ?? []); })
-      .catch(() => { if (alive) setLedgerMetals([]); })
-      .finally(() => { if (alive) setLedgerMetalsLoading(false); });
+    Promise.resolve().then(() => {
+      if (!alive) return;
+      setLedgerMetalsLoading(true);
+      metalService
+        .list({ pageSize: 100, isActive: true })
+        .then((res) => { if (alive) setLedgerMetals(res.data ?? []); })
+        .catch(() => { if (alive) setLedgerMetals([]); })
+        .finally(() => { if (alive) setLedgerMetalsLoading(false); });
+    });
     return () => { alive = false; };
   }, [view]);
 
@@ -76,21 +86,24 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
   useEffect(() => {
     if (view !== "ledger" || !shopkeeperId) return;
     let alive = true;
-    setAccountLedgerLoading(true);
-    setAccountLedgerRows([]);
-    khatabookService
-      .ledger(shopkeeperId, {
-        metalId: selectedMetalId || undefined,
-        pageSize: 100,
-      })
-      .then((res) => {
-        if (alive) setAccountLedgerRows(Array.isArray(res) ? res : (res?.data ?? []));
-      })
-      .catch(() => {
-        if (alive) setAccountLedgerRows([]);
-      })
-      .finally(() => {
-        if (alive) setAccountLedgerLoading(false);
+    Promise.resolve().then(() => {
+      if (!alive) return;
+      setAccountLedgerLoading(true);
+      setAccountLedgerRows([]);
+      khatabookService
+        .ledger(shopkeeperId, {
+          metalId: selectedMetalId || undefined,
+          pageSize: 100,
+        })
+        .then((res) => {
+          if (alive) setAccountLedgerRows(Array.isArray(res) ? res : (res?.data ?? []));
+        })
+        .catch(() => {
+          if (alive) setAccountLedgerRows([]);
+        })
+        .finally(() => {
+          if (alive) setAccountLedgerLoading(false);
+        });
       });
     return () => { alive = false; };
   }, [selectedMetalId, shopkeeperId, view]);
@@ -279,8 +292,10 @@ export function KhatabookPage({ shopkeeperId, shopName, onCollectionAdded, view 
           {creating && (
             <CreateKhatabookOrder
               defaultMetalId={selectedMetalId}
+              initialSourceOrderId={initialSourceOrderId}
               metals={metals}
               shopkeeperId={shopkeeperId}
+              onInitialSourceOrderPulled={onSourceOrderConsumed}
               onCancel={() => setCreating(false)}
               onCreated={() => {
                 setCreating(false);

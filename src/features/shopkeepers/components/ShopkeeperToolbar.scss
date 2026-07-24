@@ -3,7 +3,7 @@
 .sk-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 
   &__controls {
     display: flex;
@@ -29,7 +29,46 @@
 
 @include respond-to-mobile {
   .sk-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+
+    .search-input {
+      grid-column: 1 / -1;
+      height: 30px;
+      padding-inline: 9px;
+
+      &__field {
+        font-size: 12px;
+      }
+    }
+
+    &__controls {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, max-content) 32px;
+      gap: 8px;
+      width: 100%;
+      overflow: visible;
+      padding-bottom: 0;
+
+      .dropdown {
+        height: 30px;
+        min-width: 0;
+        width: fit-content;
+        max-width: 100%;
+        padding-inline: 9px;
+
+        &__label,
+        &__select {
+          font-size: 11px;
+        }
+      }
+
+      .icon-button {
+        width: 30px;
+        height: 30px;
+      }
+    }
   }
 }

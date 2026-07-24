@@ -13,13 +13,20 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePermissions } from "../../auth/permissions.js";
 import { khatabookService, orderService } from "../../../services/resourceServices.js";
 import { formatMoney, formatQuantity } from "./khatabookFormatters.js";
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const emptyItem = (tunch = "") => ({ itemName: "", grossWeight: "", tunch, sourceOrderId: null });
+const emptyItem = (tunch = "") => ({
+  itemName: "",
+  grossWeight: "",
+  tunch,
+  sourceOrderId: null,
+  sourceMetalId: null,
+  sourceMetalName: "",
+});
 
 const PENDING_ORDER_STATUSES_EXCLUDED = ["DELIVERED", "CANCELLED"];
 
@@ -40,6 +47,14 @@ const cashToFine = (cash, rate) => {
 };
 
 const errorDetails = (err) => err.response?.data?.error?.details ?? null;
+const webOrderMetals = (webOrder) => {
+  const metalsById = new Map();
+  for (const item of webOrder.items ?? []) {
+    const metal = item.product?.metal;
+    if (metal?.id) metalsById.set(String(metal.id), metal);
+  }
+  return [...metalsById.values()];
+};
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -47,8 +62,10 @@ export function CreateKhatabookOrder({
   shopkeeperId,
   metals = [],
   defaultMetalId = "",
+  initialSourceOrderId,
   onCancel,
   onCreated,
+  onInitialSourceOrderPulled,
 }) {
   const { hasPermission } = usePermissions();
   const canOverride = hasPermission("shopkeeper.credit_limit.update");
@@ -63,6 +80,8 @@ export function CreateKhatabookOrder({
     collection: {
       metalReceived: "",  // gm fine weight
       cashReceived: "",   // ₹
+      cashDue: "",        // ₹ converted to fine gm and added to due
+      cashDueRate: "",    // ₹ per 10 gm - falls back to current rate
       metalRate: "",      // ₹ per 10 gm - falls back to current rate
       notes: "",
     },
@@ -75,6 +94,8 @@ export function CreateKhatabookOrder({
   const [error, setError] = useState("");
   const [pendingOrders, setPendingOrders] = useState([]);
   const [loadingPending, setLoadingPending] = useState(true);
+  const [manualItemsReplacePulledOrder, setManualItemsReplacePulledOrder] = useState(false);
+  const autoPulledSourceOrderIdRef = useRef(null);
 
   useEffect(() => {
     if (!form.metalId && firstMetalId)
@@ -92,7 +113,9 @@ export function CreateKhatabookOrder({
       .then((res) => {
         if (!alive) return;
         const rows = (res.data ?? []).filter(
-          (o) => !PENDING_ORDER_STATUSES_EXCLUDED.includes(o.status),
+          (o) =>
+            !PENDING_ORDER_STATUSES_EXCLUDED.includes(o.status) &&
+            !o.fulfilledByKhatabookOrderId,
         );
         setPendingOrders(rows);
       })
@@ -109,6 +132,7 @@ export function CreateKhatabookOrder({
   const metalName = selectedSummary?.metal?.name ?? "Metal";
   const currentRate = selectedSummary?.currentRate ?? selectedSummary?.metal?.currentRate ?? "";
   const collectionRate = toNumber(form.collection.metalRate) || toNumber(currentRate);
+  const cashDueRate = toNumber(form.collection.cashDueRate) || toNumber(collectionRate);
 
   const validItems = useMemo(
     () =>
@@ -124,16 +148,40 @@ export function CreateKhatabookOrder({
     () => new Set(items.map((it) => it.sourceOrderId).filter(Boolean)),
     [items],
   );
-
-  // Only orders whose pulled items are actually complete (and therefore part
-  // of `validItems`) get marked DELIVERED on save.
-  const submittableSourceOrderIds = useMemo(
-    () => [...new Set(validItems.map((it) => it.sourceOrderId).filter(Boolean))],
-    [validItems],
+  const pulledOrderNumber = useMemo(() => {
+    if (pulledOrderIds.size !== 1) return "";
+    const [pulledOrderId] = pulledOrderIds;
+    return pendingOrders.find((order) => String(order.id) === String(pulledOrderId))?.orderNumber ?? "";
+  }, [pendingOrders, pulledOrderIds]);
+  const visiblePendingOrders = useMemo(
+    () =>
+      pendingOrders.filter((order) => {
+        if (!form.metalId) return true;
+        const orderMetals = webOrderMetals(order);
+        return orderMetals.length === 0 || orderMetals.some((metal) => String(metal.id) === String(form.metalId));
+      }),
+    [form.metalId, pendingOrders],
   );
 
-  const pullOrder = (webOrder) => {
-    const pulledItems = (webOrder.items ?? []).map((item) => {
+  const deliveryItems = useMemo(
+    () => validItems.filter((it) => !manualItemsReplacePulledOrder || !it.sourceOrderId),
+    [manualItemsReplacePulledOrder, validItems],
+  );
+
+  // The source order stays linked even when the pulled catalog rows are only
+  // used as a reference and manual bulk rows become the actual delivery lines.
+  const submittableSourceOrderIds = useMemo(
+    () => [...pulledOrderIds],
+    [pulledOrderIds],
+  );
+
+  const pullOrder = useCallback((webOrder) => {
+    const targetMetalId =
+      form.metalId ||
+      (webOrder.items ?? []).map((item) => item.product?.metal?.id).find(Boolean);
+    const pulledItems = (webOrder.items ?? [])
+      .filter((item) => !targetMetalId || String(item.product?.metal?.id) === String(targetMetalId))
+      .map((item) => {
       const variant = item.variant;
       const weightEach = toNumber(variant?.weightGrams);
       const grossWeight = weightEach ? q(weightEach * toNumber(item.quantity)) : "";
@@ -144,20 +192,43 @@ export function CreateKhatabookOrder({
         grossWeight,
         tunch,
         sourceOrderId: webOrder.id,
+        sourceMetalId: item.product?.metal?.id ?? targetMetalId ?? null,
+        sourceMetalName: item.product?.metal?.name ?? "",
       };
     });
     if (!pulledItems.length) return;
+    if (targetMetalId) {
+      setForm((f) => ({ ...f, metalId: String(targetMetalId) }));
+    }
     setItems((its) => {
       const withoutBlankRow = its.filter(
         (it) => it.itemName.trim() || toNumber(it.grossWeight) > 0 || it.sourceOrderId,
       );
       return [...withoutBlankRow, ...pulledItems];
     });
-  };
+  }, [form.defaultTunch, form.metalId]);
+
+  useEffect(() => {
+    if (!initialSourceOrderId || loadingPending) return;
+    if (autoPulledSourceOrderIdRef.current === String(initialSourceOrderId)) return;
+    const sourceOrder = pendingOrders.find(
+      (order) => String(order.id) === String(initialSourceOrderId),
+    );
+    if (!sourceOrder) return;
+    pullOrder(sourceOrder);
+    autoPulledSourceOrderIdRef.current = String(initialSourceOrderId);
+    onInitialSourceOrderPulled?.();
+  }, [
+    initialSourceOrderId,
+    loadingPending,
+    onInitialSourceOrderPulled,
+    pendingOrders,
+    pullOrder,
+  ]);
 
   const localFineDelivered = useMemo(
-    () => q(validItems.reduce((s, it) => s + Number(fineWeight(it)), 0)),
-    [validItems],
+    () => q(deliveryItems.reduce((s, it) => s + Number(fineWeight(it)), 0)),
+    [deliveryItems],
   );
 
   // derived fine credit shown in the collection panel
@@ -165,17 +236,24 @@ export function CreateKhatabookOrder({
     () => cashToFine(form.collection.cashReceived, collectionRate),
     [form.collection.cashReceived, collectionRate],
   );
+  const localCashDueFine = useMemo(
+    () => cashToFine(form.collection.cashDue, cashDueRate),
+    [cashDueRate, form.collection.cashDue],
+  );
 
   const payload = useMemo(() => {
-    const { metalReceived, cashReceived, notes } = form.collection;
+    const { metalReceived, cashReceived, cashDue, notes } = form.collection;
     const cashAmount = toNumber(cashReceived);
+    const cashDueAmount = toNumber(cashDue);
     return {
       shopkeeperId: Number(shopkeeperId),
       metalId: Number(form.metalId),
       entryDate: form.entryDate,
       notes: form.notes,
+      cashDueAmount: cashDueAmount > 0 ? cashDueAmount : undefined,
+      cashDueRate: cashDueAmount > 0 && cashDueRate > 0 ? cashDueRate : undefined,
       overrideCreditLimit: form.overrideCreditLimit,
-      items: validItems.map((it) => ({
+      items: deliveryItems.map((it) => ({
         itemName: it.itemName.trim(),
         grossWeight: Number(it.grossWeight),
         tunch: Number(it.tunch),
@@ -189,11 +267,11 @@ export function CreateKhatabookOrder({
         notes: notes.trim() || undefined,
       },
     };
-  }, [collectionRate, form, shopkeeperId, submittableSourceOrderIds, validItems]);
+  }, [cashDueRate, collectionRate, deliveryItems, form, shopkeeperId, submittableSourceOrderIds]);
 
   // live preview (debounced 250 ms)
   useEffect(() => {
-    if (!form.metalId || validItems.length === 0) {
+    if (!form.metalId || deliveryItems.length === 0) {
       setPreview(null);
       setCreditError(null);
       return;
@@ -210,7 +288,13 @@ export function CreateKhatabookOrder({
         .catch(() => { if (alive) setPreview(null); });
     }, 250);
     return () => { alive = false; clearTimeout(timer); };
-  }, [form.metalId, payload, validItems.length]);
+  }, [deliveryItems.length, form.metalId, payload]);
+
+  useEffect(() => {
+    if (pulledOrderIds.size === 0 && manualItemsReplacePulledOrder) {
+      setManualItemsReplacePulledOrder(false);
+    }
+  }, [manualItemsReplacePulledOrder, pulledOrderIds.size]);
 
   // ── updaters ────────────────────────────────────────────────────────────────
 
@@ -278,7 +362,7 @@ export function CreateKhatabookOrder({
   const currentDue           = preview?.currentDue           ?? selectedSummary?.currentRunningDue ?? "0.000";
   const creditLimit          = preview?.creditLimit           ?? selectedSummary?.creditLimit       ?? "0.000";
   const availableCredit      = preview?.availableCredit       ?? selectedSummary?.availableCredit   ?? "0.000";
-  const fineDelivered        = preview?.fineDelivered         ?? localFineDelivered;
+  const fineDelivered        = preview?.fineDelivered         ?? q(Number(localFineDelivered) + Number(localCashDueFine));
   const totalBeforeColl      = preview?.totalBeforeCollection ?? q(Number(currentDue) + Number(fineDelivered));
   const collectionCredit     = preview?.collectionCredit      ?? "0.000";
   const attemptedDue         = preview?.attemptedDue          ?? q(Math.max(0, Number(totalBeforeColl) - Number(collectionCredit)));
@@ -287,16 +371,23 @@ export function CreateKhatabookOrder({
   const metalCreditLocal     = q(form.collection.metalReceived);
   const hasMetalCollection   = toNumber(form.collection.metalReceived) > 0;
   const hasCashCollection    = toNumber(form.collection.cashReceived) > 0;
-  const collectionRateMissing = hasCashCollection && collectionRate <= 0;
+  const hasCashDue           = toNumber(form.collection.cashDue) > 0;
+  const collectionRateMissing = (hasCashCollection && collectionRate <= 0) || (hasCashDue && cashDueRate <= 0);
   const saveDisabled         =
     saving ||
     !form.metalId ||
-    validItems.length === 0 ||
+    deliveryItems.length === 0 ||
     collectionRateMissing ||
     (limitCrossed && !form.overrideCreditLimit);
   const collectionStatusText = hasMetalCollection || hasCashCollection
     ? "Collection will be settled FIFO against outstanding dues."
-    : "Leave both fields empty when nothing is collected at delivery.";
+    : hasCashDue
+      ? "Cash due is converted to fine grams and added to the running due."
+      : "Leave collection fields empty when nothing is collected at delivery.";
+  const orderIdPreview = pulledOrderNumber || "Auto generated";
+  const visibleItemRows = items
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item }) => !manualItemsReplacePulledOrder || !item.sourceOrderId);
 
   // ── render ───────────────────────────────────────────────────────────────────
 
@@ -333,7 +424,7 @@ export function CreateKhatabookOrder({
         </label>
         <label>
           <span>Order ID</span>
-          <input disabled value="Auto generated" />
+          <input disabled value={orderIdPreview} />
         </label>
         <label>
           <span>Metal</span>
@@ -394,7 +485,7 @@ export function CreateKhatabookOrder({
       </div>
 
       {/* ── Pending web orders ───────────────────────────────────────────────── */}
-      {(loadingPending || pendingOrders.length > 0) && (
+      {(loadingPending || visiblePendingOrders.length > 0) && (
         <div className="khatabook-create__pending">
           <div className="khatabook-create__pending-head">
             <h3><ShoppingBag size={14} /> Pending Web Orders</h3>
@@ -404,18 +495,31 @@ export function CreateKhatabookOrder({
             <div className="khatabook-create__pending-empty">Loading…</div>
           ) : (
             <div className="khatabook-create__pending-list">
-              {pendingOrders.map((webOrder) => {
+              {visiblePendingOrders.map((webOrder) => {
                 const pulled = pulledOrderIds.has(webOrder.id);
+                const anotherOrderPulled = pulledOrderIds.size > 0 && !pulled;
                 const itemCount = webOrder.items?.length ?? 0;
+                const metalsInOrder = webOrderMetals(webOrder);
                 return (
                   <div className="khatabook-create__pending-row" key={webOrder.id}>
                     <div className="khatabook-create__pending-info">
                       <strong>{webOrder.orderNumber}</strong>
-                      <span>{itemCount} item{itemCount === 1 ? "" : "s"} · {webOrder.status}</span>
+                      <span>
+                        {itemCount} item{itemCount === 1 ? "" : "s"} · {webOrder.status}
+                        {metalsInOrder.length > 0 &&
+                          ` · ${metalsInOrder.map((metal) => metal.name).join(", ")}`}
+                      </span>
                     </div>
+                    {metalsInOrder.length > 0 && (
+                      <div className="khatabook-create__pending-metals">
+                        {metalsInOrder.map((metal) => (
+                          <span key={metal.id}>{metal.name}</span>
+                        ))}
+                      </div>
+                    )}
                     <button
                       type="button"
-                      disabled={pulled}
+                      disabled={pulled || anotherOrderPulled}
                       onClick={() => pullOrder(webOrder)}
                     >
                       <Download size={14} />
@@ -435,6 +539,23 @@ export function CreateKhatabookOrder({
         <button type="button" onClick={addItem}><Plus size={15} /> Add Item</button>
       </div>
 
+      {pulledOrderIds.size > 0 && (
+        <label className="khatabook-create__bulk-toggle">
+          <span className="khatabook-create__bulk-toggle-text">
+            <strong>Manual bulk items replace pulled order item</strong>
+            <em>Use the pulled order only for linking; save manually added rows as the delivered items.</em>
+          </span>
+          <span className="khatabook-create__switch">
+            <input
+              type="checkbox"
+              checked={manualItemsReplacePulledOrder}
+              onChange={(event) => setManualItemsReplacePulledOrder(event.target.checked)}
+            />
+            <span className="khatabook-create__slider" />
+          </span>
+        </label>
+      )}
+
       <div className="khatabook-create__table">
         <div className="khatabook-create__row khatabook-create__row--head">
           <span>#</span>
@@ -444,18 +565,22 @@ export function CreateKhatabookOrder({
           <span>Fine Weight (gm)</span>
           <span></span>
         </div>
-        {items.map((item, idx) => {
-          const pi = preview?.items?.[idx];
+        {visibleItemRows.map(({ item, idx }, displayIdx) => {
+          const pi = preview?.items?.[displayIdx];
           return (
             <div className={`khatabook-create__row${item.sourceOrderId ? " is-pulled" : ""}`} key={idx}>
-              <span>{idx + 1}</span>
+              <span>{displayIdx + 1}</span>
               <div className="khatabook-create__item-name">
                 <input
                   placeholder="Item name"
                   value={item.itemName}
                   onChange={(e) => updateItem(idx, "itemName", e.target.value)}
                 />
-                {item.sourceOrderId && <small>from web order</small>}
+                {item.sourceOrderId && (
+                  <small>
+                    from web order{item.sourceMetalName ? ` · ${item.sourceMetalName}` : ""}
+                  </small>
+                )}
               </div>
               <input
                 type="number" min="0" step="0.001"
@@ -474,6 +599,11 @@ export function CreateKhatabookOrder({
             </div>
           );
         })}
+        {visibleItemRows.length === 0 && (
+          <div className="khatabook-create__empty-row">
+            Add manual delivery items to save against {pulledOrderNumber || "this order"}.
+          </div>
+        )}
         <div className="khatabook-create__total">
           <span>
             <strong>Total Fine Weight</strong>
@@ -558,6 +688,36 @@ export function CreateKhatabookOrder({
               <div className="khatabook-coll-card__title">
                 <IndianRupee size={14} />
                 <span>Cash</span>
+              </div>
+              <label>
+                <span>Cash Due</span>
+                <input
+                  type="number" min="0"
+                  placeholder="0"
+                  value={form.collection.cashDue}
+                  onChange={(e) => setCollField("cashDue", e.target.value)}
+                />
+              </label>
+              <label>
+                <span><Coins size={12} /> Due Rate (₹ per 10 gm)</span>
+                <input
+                  type="number" min="0"
+                  placeholder={currentRate ? String(currentRate) : "Enter rate"}
+                  value={form.collection.cashDueRate}
+                  onChange={(e) => setCollField("cashDueRate", e.target.value)}
+                />
+              </label>
+              <div className="khatabook-coll-result khatabook-coll-result--due">
+                <span>
+                  {hasCashDue
+                    ? `${formatMoney(toNumber(form.collection.cashDue))} adds`
+                    : "Cash due"}
+                </span>
+                <strong>
+                  {hasCashDue && !cashDueRate
+                    ? "Rate needed"
+                    : formatQuantity(localCashDueFine)}
+                </strong>
               </div>
               <label>
                 <span>Cash Received</span>

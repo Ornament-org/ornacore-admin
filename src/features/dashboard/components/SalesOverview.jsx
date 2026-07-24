@@ -8,10 +8,13 @@ import {
   YAxis,
 } from "recharts";
 import { salesTrend } from "../../../data/demoData.js";
-import { formatCurrency } from "../../../utils/formatters.js";
 import { Card } from "../../../components/common/Card.jsx";
 
-export function SalesOverview({ data, total }) {
+const formatGrams = (value) => `${Number(value || 0).toLocaleString("en-IN", {
+  maximumFractionDigits: 3,
+})} gm`;
+
+export function SalesOverview({ data, metalTotals, total }) {
   const chartData =
     data !== undefined
       ? data.map((item) => ({
@@ -26,18 +29,25 @@ export function SalesOverview({ data, total }) {
       <div className="card-heading">
         <div>
           <h2>Sales Overview</h2>
-          <p>Total sales this month</p>
+          <p>Fine metal delivered in selected date range</p>
         </div>
-        <select className="compact-select" defaultValue="month">
-          <option value="month">This Month</option>
-          <option value="quarter">This Quarter</option>
-        </select>
+        <span className="dashboard-chip">gm</span>
       </div>
       <div className="sales-overview__value">
-        <strong>{formatCurrency(total ?? 24578000)}</strong>
+        <strong>{formatGrams(total ?? 0)}</strong>
         <span>{data ? "Live" : "+24.6%"}</span>
-        <small>{data ? "current total" : "vs last month"}</small>
+        <small>{data ? "selected range" : "vs last month"}</small>
       </div>
+      {metalTotals?.length > 0 && (
+        <div className="sales-overview__metals">
+          {metalTotals.map((metal) => (
+            <span key={metal.name}>
+              <b>{metal.name}</b>
+              <strong>{formatGrams(metal.value)}</strong>
+            </span>
+          ))}
+        </div>
+      )}
       <div className="chart-area">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
@@ -58,11 +68,11 @@ export function SalesOverview({ data, total }) {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#87837c", fontSize: 11 }}
-              tickFormatter={(value) => `₹${Math.round(value / 100000)}L`}
+              tickFormatter={(value) => `${Number(value).toFixed(0)}g`}
             />
             <Tooltip
               cursor={{ stroke: "#d39a37", strokeDasharray: "4 4" }}
-              formatter={(value) => [formatCurrency(value), "Sales"]}
+              formatter={(value) => [formatGrams(value), "Fine delivered"]}
               contentStyle={{
                 borderRadius: 10,
                 border: "1px solid #e7e0d3",

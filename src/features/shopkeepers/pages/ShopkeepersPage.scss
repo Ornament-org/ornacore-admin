@@ -3,19 +3,19 @@
 .sk-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .sk-list-card {
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--surface);
   box-shadow: var(--shadow);
+  overflow: hidden;
 
   &__toolbar {
-    padding: 16px 20px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--line);
-    border-radius: 14px 14px 0 0;
     background: var(--surface-soft);
   }
 }
@@ -27,22 +27,10 @@
 }
 
 @include respond-to-tablet {
-  .sk-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .shopkeepers-page {
     gap: 12px;
   }
 
-  .sk-list-card {
-    border-radius: 12px;
-
-    &__toolbar {
-      padding: 13px 16px;
-      border-radius: 12px 12px 0 0;
-    }
-  }
-}
-
-@include respond-to-mobile {
   .sk-stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
@@ -52,8 +40,30 @@
     border-radius: 10px;
 
     &__toolbar {
-      padding: 12px 14px;
-      border-radius: 10px 10px 0 0;
+      padding: 10px 12px;
+    }
+  }
+}
+
+@include respond-to-mobile {
+  .shopkeepers-page {
+    gap: 10px;
+
+    .page-header {
+      display: none;
+    }
+  }
+
+  .sk-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .sk-list-card {
+    border-radius: 8px;
+
+    &__toolbar {
+      padding: 9px;
     }
   }
 }

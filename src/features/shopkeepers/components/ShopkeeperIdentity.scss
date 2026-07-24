@@ -1,7 +1,7 @@
 .sk-identity {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 
   &__copy {
     display: flex;
@@ -35,5 +35,36 @@
     margin-top: 1px;
     font-size: 10.5px;
     color: var(--muted);
+  }
+}
+
+@media (max-width: 560px) {
+  .sk-identity {
+    gap: 8px;
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      font-size: 9px;
+    }
+
+    &__copy {
+      gap: 1px;
+    }
+
+    &__name {
+      max-width: min(52vw, 230px);
+      font-size: 12.5px;
+      line-height: 1.25;
+    }
+
+    &__id {
+      font-size: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    &__phone {
+      display: none;
+    }
   }
 }

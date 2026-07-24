@@ -25,7 +25,7 @@ export function ExpandedOrderCard({ order, onViewLedger, onAddMetalCollection, o
             <tr>
               <th>Item Name</th>
               <th>Gross Weight</th>
-              <th>Tunch / Purity</th>
+              <th>Tunch</th>
               <th>Fine Weight</th>
             </tr>
           </thead>

@@ -10,7 +10,7 @@ function initials(name = "") {
     .join("");
 }
 
-export function ShopkeeperHeaderCard({ details, onEdit, onEditLimits }) {
+export function ShopkeeperHeaderCard({ details, onEdit }) {
   const shop = details?.shop ?? {};
   const owner = details?.owner ?? {};
   const address = details?.address ?? {};
@@ -23,7 +23,11 @@ export function ShopkeeperHeaderCard({ details, onEdit, onEditLimits }) {
     <div className="sd-header">
       <div className="sd-header__left">
         <div className="sd-header__avatar">
-          {initials(shop.shopName) || "?"}
+          {shop.profileImageUrl ? (
+            <img src={shop.profileImageUrl} alt={shop.shopName ?? "Shopkeeper"} />
+          ) : (
+            initials(shop.shopName) || "?"
+          )}
         </div>
 
         <div className="sd-header__info">

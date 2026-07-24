@@ -1,9 +1,11 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { Card } from "../../../components/common/Card.jsx";
 import { dueAging } from "../../../data/demoData.js";
-import { formatCurrency } from "../../../utils/formatters.js";
 
-const colors = ["#e0aa49", "#c58b31", "#8db7df", "#5b8cc4"];
+const colors = ["#d8a13d", "#bfc3c7", "#c78628", "#7f96ad"];
+const formatGrams = (value) => `${Number(value || 0).toLocaleString("en-IN", {
+  maximumFractionDigits: 3,
+})} gm`;
 
 export function DueOverview({ data, total }) {
   const rows =
@@ -15,7 +17,7 @@ export function DueOverview({ data, total }) {
       <div className="card-heading">
         <div>
           <h2>Due Amount Overview</h2>
-          <p>Outstanding balance aging</p>
+          <p>Outstanding metal due across all shopkeepers</p>
         </div>
       </div>
       <div className="donut-layout">
@@ -30,8 +32,8 @@ export function DueOverview({ data, total }) {
             </PieChart>
           </ResponsiveContainer>
           <div className="donut-chart__center">
-            <strong>{formatCurrency(total ?? 4576800)}</strong>
-            <span>Total Due</span>
+            <strong>{formatGrams(total ?? 0)}</strong>
+            <span>All metals</span>
           </div>
         </div>
         <div className="chart-legend chart-legend--amounts">
@@ -39,7 +41,7 @@ export function DueOverview({ data, total }) {
             <div key={item.name}>
               <span className="chart-legend__swatch" style={{ backgroundColor: item.color }} />
               <span>{item.name}</span>
-              <strong>{formatCurrency(item.value)}</strong>
+              <strong>{formatGrams(item.value)}</strong>
             </div>
           ))}
         </div>

@@ -3,27 +3,27 @@
 .sk-status-tabs {
   display: flex;
   overflow-x: auto;
-  gap: 6px;
+  gap: 4px;
   max-width: 100%;
   align-items: center;
   border: 1px solid #eadfcf;
-  border-radius: 12px;
-  padding: 6px;
+  border-radius: 10px;
+  padding: 4px;
   background: #fffaf1;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 85%);
   scrollbar-width: thin;
 
   button {
     display: inline-flex;
-    min-height: 34px;
+    min-height: 30px;
     flex: 1 1 0;
     align-items: center;
     justify-content: center;
     gap: 6px;
     color: #6d624f;
     border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 8px 14px;
+    border-radius: 7px;
+    padding: 6px 12px;
     background: transparent;
     font-size: 12px;
     font-weight: 700;
@@ -57,9 +57,13 @@
 
   @include respond-to-mobile {
     justify-content: flex-start;
+    padding: 4px;
 
     button {
       flex: 0 0 auto;
+      min-height: 28px;
+      padding: 5px 10px;
+      font-size: 10.5px;
     }
   }
 }

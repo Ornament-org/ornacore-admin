@@ -1,6 +1,6 @@
-import { ArrowLeft, ArrowRightCircle, Truck, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, ArrowRightCircle, PackageCheck, Truck, UserRoundCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../../components/common/Button.jsx";
 import { Card } from "../../../components/common/Card.jsx";
 import { EntityCell } from "../../../components/common/EntityCell.jsx";
@@ -32,6 +32,7 @@ const weightByMetal = (items) => {
 
 export function OrderDetailsPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -97,12 +98,31 @@ export function OrderDetailsPage() {
   const weights = weightByMetal(items);
   const shopkeeper = order.shopkeeper;
   const canUpdateStatus = (ORDER_TRANSITIONS[order.status] ?? []).length > 0;
+  const canCreateToolboxDelivery =
+    order.shopkeeperId &&
+    !order.fulfilledByKhatabookOrderId &&
+    !["DELIVERED", "CANCELLED"].includes(order.status);
+  const toolboxDeliveryLabel = order.fulfilledByKhatabookOrderId
+    ? "Already in toolbox"
+    : "Create Order";
 
   return (
     <div className="page-stack">
       <PageHeader
         actions={
           <>
+            <Button
+              disabled={!canCreateToolboxDelivery}
+              icon={PackageCheck}
+              variant="secondary"
+              onClick={() =>
+                navigate(
+                  `/shopkeepers/${order.shopkeeperId}?tab=orders&createFromOrderId=${order.id}`,
+                )
+              }
+            >
+              {toolboxDeliveryLabel}
+            </Button>
             <Button
               disabled={!canUpdateStatus}
               icon={ArrowRightCircle}

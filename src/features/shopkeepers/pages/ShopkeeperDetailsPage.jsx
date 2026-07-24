@@ -1,29 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { FormAlert } from "../../../components/common/FormAlert.jsx";
 import { ResourceFormModal } from "../../../components/common/ResourceFormModal.jsx";
 import { SkeletonShopkeeperDetails } from "../../../components/skeleton/SkeletonShopkeeperDetails.jsx";
 import { metalService, shopkeeperService } from "../../../services/resourceServices.js";
 import { KhatabookPage } from "../../khatabook/pages/KhatabookPage.jsx";
 import { MetalCreditLimitEditor } from "../components/MetalCreditLimitEditor.jsx";
-import { ShopOverview } from "../components/overview/ShopOverview.jsx";
 import { ShopkeeperHeaderCard } from "../components/shopkeeper-details/ShopkeeperHeaderCard.jsx";
 import "../components/shopkeeper-details/ShopkeeperDetails.scss";
 import { OverviewAnalyticsCard } from "../components/shopkeeper-details/OverviewAnalyticsCard.jsx";
 
-const tabs = ["Overview", "Orders (Khatabook)", "Ledger"];
+const tabs = ["Orders (Khatabook)", "Ledger"];
 
 const emptyState = {
   details: null,
-  analytics: null,
-  ordersSummary: null,
-  ledgerSummary: null,
-  recentActivity: [],
 };
 
 export function ShopkeeperDetailsPage() {
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const createFromOrderId = searchParams.get("createFromOrderId");
+  const [activeTab, setActiveTab] = useState(() =>
+    searchParams.get("tab") === "ledger" ? "Ledger" : "Orders (Khatabook)",
+  );
   const [state, setState] = useState(emptyState);
   const [metals, setMetals] = useState([]);
   const [modal, setModal] = useState({ open: false, type: null });
@@ -33,20 +32,11 @@ export function ShopkeeperDetailsPage() {
   const [error, setError] = useState("");
 
   const loadDetails = useCallback(() => {
-    return Promise.all([
-      shopkeeperService.details(id),
-      shopkeeperService.analytics(id),
-      shopkeeperService.ordersSummary(id),
-      shopkeeperService.ledgerSummary(id),
-      shopkeeperService.recentActivity(id),
-    ])
-      .then(([details, analytics, ordersSummary, ledgerSummary, recentActivity]) => {
+    return shopkeeperService
+      .details(id)
+      .then((details) => {
         setState({
           details: details.data,
-          analytics: analytics.data,
-          ordersSummary: ordersSummary.data,
-          ledgerSummary: ledgerSummary.data,
-          recentActivity: recentActivity.data ?? [],
         });
       })
       .catch((requestError) => {
@@ -67,6 +57,15 @@ export function ShopkeeperDetailsPage() {
 
     return () => { alive = false; };
   }, [loadDetails]);
+
+  const updateActiveTab = useCallback((tab) => {
+    setActiveTab(tab);
+    if (tab === "Ledger") {
+      setSearchParams({ tab: "ledger" }, { replace: true });
+    } else if (searchParams.size > 0) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams.size, setSearchParams]);
 
   const creditLimitField = useMemo(
     () => ({
@@ -112,24 +111,12 @@ export function ShopkeeperDetailsPage() {
     return <div className="shopkeeper-details__state">No shopkeeper found.</div>;
   }
 
-  const ms = state.details?.metalSummary;
-  const summary = {
-    primaryMetal:   ms?.primaryMetal,
-    totalDue:       ms?.totalDue,
-    totalDelivered: ms?.totalDelivered,
-    totalReceived:  ms?.totalReceived,
-    availableCredit: state.analytics?.metalSummary?.creditRemaining,
-  };
-  const metalName = ms?.primaryMetal?.name ?? "Metal";
-  const ledgerSummary = state.ledgerSummary;
-
   return (
     <div className="shopkeeper-details">
 
       <ShopkeeperHeaderCard
         details={state.details}
         onEdit={() => setModal({ open: true, type: "edit" })}
-        onEditLimits={() => setModal({ open: true, type: "limits" })}
       />
       <OverviewAnalyticsCard shopkeeperId={id} refreshKey={analyticsKey} />
 
@@ -140,24 +127,27 @@ export function ShopkeeperDetailsPage() {
             className={activeTab === tab ? "is-active" : ""}
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => updateActiveTab(tab)}
           >
             {tab}
           </button>
         ))}
       </div>
 
-      {activeTab === "Overview" && (
-        <ShopOverview
+      {activeTab === "Orders (Khatabook)" && (
+        <KhatabookPage
+          initialSourceOrderId={createFromOrderId}
           shopkeeperId={id}
-          ledgerSummary={ledgerSummary}
-          ordersSummary={state.ordersSummary}
-          recentActivity={state.recentActivity}
-          metalName={metalName}
+          shopName={state.details?.shop?.shopName}
+          onCollectionAdded={handleCollectionAdded}
+          onSourceOrderConsumed={() => {
+            if (createFromOrderId) {
+              setSearchParams({}, { replace: true });
+            }
+          }}
+          view="orders"
         />
       )}
-
-      {activeTab === "Orders (Khatabook)" && <KhatabookPage shopkeeperId={id} shopName={state.details?.shop?.shopName} onCollectionAdded={handleCollectionAdded} view="orders" />}
 
       {activeTab === "Ledger" && <KhatabookPage shopkeeperId={id} shopName={state.details?.shop?.shopName} onCollectionAdded={handleCollectionAdded} view="ledger" />}
 

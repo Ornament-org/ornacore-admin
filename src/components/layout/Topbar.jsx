@@ -57,6 +57,13 @@ export function Topbar({ onMenuClick }) {
           </button>
           {profileOpen && (
             <div className="profile-menu">
+              <div className="profile-menu__identity">
+                <span className="avatar">{(user?.email?.[0] || "A").toUpperCase()}</span>
+                <div>
+                  <strong>{roleLabel}</strong>
+                  <small>{user?.email || "admin@ornacore.com"}</small>
+                </div>
+              </div>
               <button onClick={() => navigate("/settings")}>Account settings</button>
               <button className="profile-menu__danger" onClick={handleLogout}>
                 Sign out

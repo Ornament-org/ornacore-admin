@@ -25,6 +25,7 @@ export function ShopkeeperRow({ row, onAction }) {
           shopName={row.shopName}
           shopId={row.shopId ?? row.id}
           phone={row.phone}
+          profileImageUrl={row.profileImageUrl}
         />
       </td>
       <td className="sk-table__cell" data-label="Owner & Location">

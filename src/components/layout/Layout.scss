@@ -322,6 +322,41 @@
   box-shadow: 0 16px 40px rgba(40, 34, 25, 0.13);
 }
 
+.profile-menu__identity {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px 10px;
+  border-bottom: 1px solid #f0ece4;
+}
+
+.profile-menu__identity .avatar {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 auto;
+}
+
+.profile-menu__identity div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.profile-menu__identity strong {
+  color: #282724;
+  font-size: 10px;
+}
+
+.profile-menu__identity small {
+  max-width: 120px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .profile-menu button {
   border: 0;
   border-radius: 6px;

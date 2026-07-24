@@ -1,11 +1,9 @@
-import { CreditCard, Layers2, Package, Truck, Wallet } from "lucide-react";
+import { AlertTriangle, CreditCard, Layers2 } from "lucide-react";
 import "./AnalyticsCard.scss";
 
 const CARD_CONFIG = {
-  due:       { icon: Package,    accent: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
-  delivered: { icon: Truck,      accent: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" },
-  received:  { icon: Wallet,     accent: "#10b981", bg: "#ecfdf5", border: "#a7f3d0" },
-  credit:    { icon: CreditCard, accent: "#8b5cf6", bg: "#f5f3ff", border: "#ddd6fe" },
+  due:    { icon: AlertTriangle, accent: "#dc2626", bg: "#fff1f2", border: "#fecdd3" },
+  credit: { icon: CreditCard,    accent: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe" },
 };
 
 const fmt = (v) => Number(v ?? 0).toFixed(3);
@@ -16,7 +14,7 @@ export function AnalyticsCard({ type, title, total, unit = "gm", items = [] }) {
 
   return (
     <div
-      className="analytics-card"
+      className={`analytics-card analytics-card--${type}`}
       style={{ "--card-accent": config.accent, "--card-bg": config.bg, "--card-border": config.border }}
     >
       <div className="analytics-card__top">

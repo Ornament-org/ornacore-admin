@@ -5,7 +5,7 @@
   align-items: stretch;
   flex-wrap: wrap;
   border: 1px solid #ece6dc;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #faf8f4;
   overflow: hidden;
   max-width: 100%;
@@ -17,8 +17,8 @@
   &__item {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 7px 11px;
+    gap: 2px;
+    padding: 6px 9px;
     min-width: 0;
 
     &--empty {
@@ -51,7 +51,7 @@
   }
 
   &__value {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--ink);
     white-space: nowrap;
@@ -83,39 +83,51 @@
   }
 }
 
-// Mobile: stack vertically, full width
+// Mobile: compact chips, not a tall stacked card.
 @include respond-to-mobile {
   .due-overview {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
     width: 100%;
-    border-radius: 8px;
+    border: 0;
+    background: transparent;
+    overflow: visible;
 
     &__group {
-      display: flex;
-      flex-direction: row;
-      align-items: stretch;
+      display: contents;
     }
 
     &__item {
-      flex: 1;
-      padding: 6px 10px;
+      min-width: 0;
+      padding: 6px 7px;
+      border: 1px solid #ece6dc;
+      border-radius: 7px;
+      background: #faf8f4;
     }
 
     &__divider {
-      width: 1px;
-      height: auto;
+      display: none;
     }
 
-    // Horizontal rule between groups and cash row
-    &__group + &__item,
-    &__group + &__group {
-      border-top: 1px solid #ece6dc;
+    &__label {
+      min-width: 0;
+      gap: 3px;
+      font-size: 7.5px;
+      letter-spacing: 0.035em;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    // Cash Due row separator when there are metal groups above
-    &__group ~ &__item:last-child {
-      border-top: 1px solid #ece6dc;
+    &__value {
+      font-size: 10.5px;
+      line-height: 1.2;
     }
+  }
+}
+
+@media (max-width: 390px) {
+  .due-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

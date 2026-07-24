@@ -88,3 +88,15 @@
     }
   }
 }
+
+@media (max-width: 560px) {
+  .row-actions {
+    gap: 3px;
+
+    &__btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+  }
+}

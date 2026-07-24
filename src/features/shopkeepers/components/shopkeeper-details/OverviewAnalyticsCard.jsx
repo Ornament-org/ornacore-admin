@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "../../../../components/skeleton/Skeleton.jsx";
 import { analyticsService } from "../../../../services/resourceServices.js";
 import { AnalyticsCard } from "./AnalyticsCard.jsx";
+import "../overview/ShopOverview.scss";
 
 const toIsoDate = (date) => date.toISOString().slice(0, 10);
 
@@ -16,7 +17,7 @@ const defaultEnd = () => toIsoDate(new Date());
 function LoadingGrid() {
   return (
     <div className="overview-analytics__grid">
-      {[0, 1, 2, 3].map((i) => (
+      {[0, 1].map((i) => (
         <div key={i} className="overview-analytics__skeleton-card">
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <Skeleton w={46} h={46} r={13} />
@@ -51,13 +52,18 @@ export function OverviewAnalyticsCard({ shopkeeperId, refreshKey = 0 }) {
   useEffect(() => {
     if (!shopkeeperId) return;
     let alive = true;
-    setLoading(true);
-    setError(false);
-    analyticsService
-      .shopkeeperOverview(shopkeeperId, startDate, endDate)
+
+    Promise.resolve()
+      .then(() => {
+        if (!alive) return null;
+        setLoading(true);
+        setError(false);
+        return analyticsService.shopkeeperOverview(shopkeeperId, startDate, endDate);
+      })
       .then((res) => { if (alive) setData(res.data ?? null); })
       .catch(() => { if (alive) setError(true); })
       .finally(() => { if (alive) setLoading(false); });
+
     return () => { alive = false; };
   }, [shopkeeperId, startDate, endDate, refreshKey]);
 
@@ -73,10 +79,12 @@ export function OverviewAnalyticsCard({ shopkeeperId, refreshKey = 0 }) {
     if (val < startDate) setStartDate(val);
   };
 
+  const visibleCards = (data?.cards ?? []).filter((card) => ["due", "credit"].includes(card.type));
+
   return (
     <div className="sd-info-card overview-analytics">
       <div className="sd-info-card__header overview-analytics__header">
-        <h2 className="sd-info-card__title">Metal Overview</h2>
+        <h2 className="sd-info-card__title">Account Position</h2>
 
         <div className="overview-analytics__date-range">
           <CalendarDays size={14} className="overview-analytics__date-range-icon" />
@@ -109,7 +117,7 @@ export function OverviewAnalyticsCard({ shopkeeperId, refreshKey = 0 }) {
 
       {!loading && !error && data && (
         <div className="overview-analytics__grid">
-          {data.cards.map((card) => (
+          {visibleCards.map((card) => (
             <AnalyticsCard key={card.type} {...card} />
           ))}
         </div>

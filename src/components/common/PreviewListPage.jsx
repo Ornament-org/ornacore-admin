@@ -1,5 +1,6 @@
 import { Download, Filter, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { BackendPendingBanner } from "./SectionState.jsx";
 import { Button } from "./Button.jsx";
 import { Card } from "./Card.jsx";
@@ -36,7 +37,9 @@ export function PreviewListPage({
   // "Delete Selected" bar. Omitted entirely for lists that don't need it.
   bulkDeleteAction,
 }) {
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get("search") ?? "";
+  const [search, setSearch] = useState(initialSearch);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
   const [tabFilter, setTabFilter] = useState("");
@@ -53,6 +56,11 @@ export function PreviewListPage({
     }, 300);
     return () => window.clearTimeout(timeout);
   }, [search]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get("search") ?? "";
+    setSearch(nextSearch);
+  }, [searchParams]);
 
   // The selection only ever refers to ids on the currently loaded page/filter
   // — clear it whenever any of those shift underneath it, so a stale

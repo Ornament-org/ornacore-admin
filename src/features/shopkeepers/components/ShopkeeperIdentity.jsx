@@ -11,10 +11,10 @@ function getInitials(name = "") {
     .toUpperCase();
 }
 
-export function ShopkeeperIdentity({ shopName, shopId, phone }) {
+export function ShopkeeperIdentity({ shopName, shopId, phone, profileImageUrl }) {
   return (
     <div className="sk-identity">
-      <Avatar initials={getInitials(shopName)} />
+      <Avatar initials={getInitials(shopName)} imageUrl={profileImageUrl} imageAlt={shopName || "Shopkeeper"} />
       <div className="sk-identity__copy">
         <strong className="sk-identity__name">{shopName}</strong>
         <span className="sk-identity__id">{shopId}</span>

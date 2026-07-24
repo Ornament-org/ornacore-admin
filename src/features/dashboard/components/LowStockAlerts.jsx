@@ -10,6 +10,7 @@ export function LowStockAlerts({ data }) {
           name: `${item.variant?.product?.name ?? "Product"} ${item.variant?.sku ?? ""}`,
           stock: item.onHandQuantity,
           metal: (item.variant?.product?.metal?.name ?? "G").slice(0, 1),
+          search: item.variant?.sku ?? item.variant?.product?.name ?? "",
         }))
       : lowStockItems;
   return (
@@ -25,11 +26,15 @@ export function LowStockAlerts({ data }) {
       </div>
       <div className="stock-alerts">
         {rows.map((item) => (
-          <div className="stock-alert" key={item.name}>
+          <Link
+            className="stock-alert"
+            key={item.name}
+            to={`/inventory?search=${encodeURIComponent(item.search || item.name)}`}
+          >
             <span className={`metal-dot metal-dot--${item.metal.toLowerCase()}`}>{item.metal}</span>
             <span>{item.name}</span>
             <strong>Stock: {item.stock}</strong>
-          </div>
+          </Link>
         ))}
         {rows.length === 0 && <div className="dashboard-empty">Stock levels are healthy</div>}
       </div>
