@@ -16,6 +16,28 @@ export const loginAdmin = createAsyncThunk(
   },
 );
 
+export const loginAdminWithOtp = createAsyncThunk(
+  "auth/loginAdminWithOtp",
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await authService.verifyOtpLogin(payload);
+    } catch (error) {
+      return rejectWithValue(apiErrorMessage(error));
+    }
+  },
+);
+
+export const loginAdminWithGoogle = createAsyncThunk(
+  "auth/loginAdminWithGoogle",
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await authService.googleLogin(payload);
+    } catch (error) {
+      return rejectWithValue(apiErrorMessage(error));
+    }
+  },
+);
+
 export const hydrateCurrentUser = createAsyncThunk(
   "auth/hydrateCurrentUser",
   async (_, { rejectWithValue }) => {
@@ -99,6 +121,46 @@ const authSlice = createSlice({
       .addCase(loginAdmin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Unable to sign in";
+      })
+      .addCase(loginAdminWithOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginAdminWithOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.status = "authenticated";
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        authStorage.write({
+          user: action.payload.user,
+          accessToken: action.payload.accessToken,
+          refreshToken: action.payload.refreshToken,
+        });
+      })
+      .addCase(loginAdminWithOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Unable to verify OTP";
+      })
+      .addCase(loginAdminWithGoogle.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginAdminWithGoogle.fulfilled, (state, action) => {
+        state.loading = false;
+        state.status = "authenticated";
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        authStorage.write({
+          user: action.payload.user,
+          accessToken: action.payload.accessToken,
+          refreshToken: action.payload.refreshToken,
+        });
+      })
+      .addCase(loginAdminWithGoogle.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Unable to sign in with Google";
       })
       .addCase(hydrateCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload;

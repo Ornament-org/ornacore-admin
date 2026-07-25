@@ -143,9 +143,9 @@
   font-weight: 800;
 }
 
-// Mobile: the table stops being a table and each row becomes a self-contained
-// card — no more horizontal scrolling / squished columns. Each cell shows its
-// column label (from `data-label`) beside its value.
+// Mobile: keep lists as compact rows. The primary cell carries the record
+// identity, while status/actions remain available without turning every
+// column into a tall card.
 @include respond-to-mobile {
   .data-table-wrap {
     overflow-x: visible;
@@ -166,13 +166,18 @@
 
   .data-table tbody tr {
     position: relative;
-    display: block;
-    margin: 10px;
-    padding: 14px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 62px;
+    margin: 0;
+    padding: 8px 10px;
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-width: 0 0 1px;
+    border-radius: 0;
     background: #fff;
-    box-shadow: 0 1px 3px rgb(35 30 22 / 6%);
+    box-shadow: none;
 
     &:hover {
       background: #fff;
@@ -184,37 +189,21 @@
   }
 
   .data-table td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    display: none;
     height: auto;
-    padding: 8px 0;
-    border-bottom: 1px solid #f2eee7;
+    padding: 0;
+    border-bottom: 0;
     font-size: 13px;
-    text-align: right;
+    text-align: left;
 
     &::before {
-      content: attr(data-label);
-      flex-shrink: 0;
-      color: var(--muted);
-      font-size: 10.5px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      text-align: left;
+      display: none;
     }
-  }
-
-  // Actions is the last <td> (absolute) — so the last in-flow data cell is
-  // the second-to-last child; drop its divider so the card ends cleanly.
-  .data-table td:nth-last-child(2) {
-    border-bottom: 0;
   }
 
   // The empty-state cell is a single full-width message, not a label:value
   // pair — center it and drop the generated label.
-  .data-table__empty {
+  .data-table td.data-table__empty {
     display: block;
     height: auto;
     padding: 40px 14px;
@@ -228,11 +217,13 @@
   // First column (product / entity / shopkeeper name) leads the card: full
   // width, left-aligned, no inline label, and reserves the top-right corner
   // for the checkbox + 3-dot controls positioned there.
-  .data-table__cell--primary {
+  .data-table td.data-table__cell--primary {
     display: block;
-    padding: 0 72px 10px 0;
-    margin-bottom: 4px;
-    border-bottom: 1px solid #eeeae3;
+    grid-column: 2;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border-bottom: 0;
     text-align: left;
 
     &::before {
@@ -240,12 +231,21 @@
     }
   }
 
-  // Checkbox (bulk select) and the 3-dot menu float in the card's top-right
-  // rather than forming their own empty label rows.
-  .data-table__select {
-    position: absolute;
-    top: 12px;
-    right: 42px;
+  .data-table td[data-label="Status"] {
+    display: flex;
+    grid-column: 3;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 58px;
+  }
+
+  // Checkbox (bulk select) and the 3-dot menu stay in-row rather than forming
+  // their own empty label rows.
+  .data-table td.data-table__select {
+    position: static;
+    display: grid;
+    place-items: center;
+    grid-column: 1;
     width: auto;
     padding: 0;
     border-bottom: 0;
@@ -255,10 +255,11 @@
     }
   }
 
-  .data-table__actions {
-    position: absolute;
-    top: 8px;
-    right: 8px;
+  .data-table td.data-table__actions {
+    position: static;
+    display: grid;
+    place-items: center;
+    grid-column: 4;
     width: auto;
     padding: 0;
     border-bottom: 0;
@@ -281,6 +282,7 @@
 
   .row-action-menu {
     width: 160px;
+    top: calc(100% - 4px);
     right: 8px;
   }
 

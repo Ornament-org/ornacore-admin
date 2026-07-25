@@ -272,6 +272,8 @@ export const mediaService = {
     if (owner) formData.append("owner", JSON.stringify(owner));
     const { data } = await apiClient.post("/admin/media", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: 60000,
+      timeoutErrorMessage: "Media upload took too long. Please try a smaller file or try again.",
       notification: { success: false },
     });
     return data;

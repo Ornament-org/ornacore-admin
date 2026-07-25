@@ -6,6 +6,27 @@ export const authService = {
     return data.data;
   },
 
+  async googleLogin(payload) {
+    const { data } = await apiClient.post("/admin/auth/google-login", payload, {
+      notification: false,
+    });
+    return data.data;
+  },
+
+  async requestOtpLogin(payload) {
+    const { data } = await apiClient.post("/admin/auth/otp-login/request", payload, {
+      notification: { success: false },
+    });
+    return data.data;
+  },
+
+  async verifyOtpLogin(payload) {
+    const { data } = await apiClient.post("/admin/auth/otp-login/verify", payload, {
+      notification: false,
+    });
+    return data.data;
+  },
+
   async me() {
     const { data } = await apiClient.get("/admin/auth/me");
     return data.data.user;

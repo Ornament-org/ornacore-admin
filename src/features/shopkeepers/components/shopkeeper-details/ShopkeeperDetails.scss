@@ -474,6 +474,11 @@
 }
 
 @media (max-width: 768px) {
+  .shopkeeper-details > .overview-analytics,
+  .shopkeeper-details > .metal-analytics {
+    display: none;
+  }
+
   .shopkeeper-details__grid,
   .shopkeeper-details__lower {
     grid-template-columns: 1fr;

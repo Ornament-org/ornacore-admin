@@ -4,6 +4,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
+  min-width: 0;
 
   .avatar {
     width: 30px;
@@ -14,17 +15,26 @@
   > div {
     display: flex;
     flex-direction: column;
+    min-width: 0;
   }
 
   strong {
+    overflow: hidden;
     color: #32332f;
-    font-size: 9px;
+    font-size: 12px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   span {
+    overflow: hidden;
     margin-top: 3px;
     color: var(--muted);
-    font-size: 7px;
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

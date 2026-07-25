@@ -75,13 +75,12 @@ export function CreateKhatabookOrder({
     metalId: firstMetalId ? String(firstMetalId) : "",
     entryDate: today(),
     defaultTunch: "52",
+    cashDueAmount: "",
     notes: "",
     overrideCreditLimit: false,
     collection: {
       metalReceived: "",  // gm fine weight
       cashReceived: "",   // ₹
-      cashDue: "",        // ₹ converted to fine gm and added to due
-      cashDueRate: "",    // ₹ per 10 gm - falls back to current rate
       metalRate: "",      // ₹ per 10 gm - falls back to current rate
       notes: "",
     },
@@ -132,7 +131,6 @@ export function CreateKhatabookOrder({
   const metalName = selectedSummary?.metal?.name ?? "Metal";
   const currentRate = selectedSummary?.currentRate ?? selectedSummary?.metal?.currentRate ?? "";
   const collectionRate = toNumber(form.collection.metalRate) || toNumber(currentRate);
-  const cashDueRate = toNumber(form.collection.cashDueRate) || toNumber(collectionRate);
 
   const validItems = useMemo(
     () =>
@@ -236,22 +234,16 @@ export function CreateKhatabookOrder({
     () => cashToFine(form.collection.cashReceived, collectionRate),
     [form.collection.cashReceived, collectionRate],
   );
-  const localCashDueFine = useMemo(
-    () => cashToFine(form.collection.cashDue, cashDueRate),
-    [cashDueRate, form.collection.cashDue],
-  );
-
   const payload = useMemo(() => {
-    const { metalReceived, cashReceived, cashDue, notes } = form.collection;
+    const { metalReceived, cashReceived, notes } = form.collection;
     const cashAmount = toNumber(cashReceived);
-    const cashDueAmount = toNumber(cashDue);
+    const cashDueAmount = toNumber(form.cashDueAmount);
     return {
       shopkeeperId: Number(shopkeeperId),
       metalId: Number(form.metalId),
       entryDate: form.entryDate,
       notes: form.notes,
       cashDueAmount: cashDueAmount > 0 ? cashDueAmount : undefined,
-      cashDueRate: cashDueAmount > 0 && cashDueRate > 0 ? cashDueRate : undefined,
       overrideCreditLimit: form.overrideCreditLimit,
       items: deliveryItems.map((it) => ({
         itemName: it.itemName.trim(),
@@ -267,7 +259,7 @@ export function CreateKhatabookOrder({
         notes: notes.trim() || undefined,
       },
     };
-  }, [cashDueRate, collectionRate, deliveryItems, form, shopkeeperId, submittableSourceOrderIds]);
+  }, [collectionRate, deliveryItems, form, shopkeeperId, submittableSourceOrderIds]);
 
   // live preview (debounced 250 ms)
   useEffect(() => {
@@ -359,20 +351,20 @@ export function CreateKhatabookOrder({
 
   // ── derived preview / display values ────────────────────────────────────────
 
-  const currentDue           = preview?.currentDue           ?? selectedSummary?.currentRunningDue ?? "0.000";
-  const creditLimit          = preview?.creditLimit           ?? selectedSummary?.creditLimit       ?? "0.000";
-  const availableCredit      = preview?.availableCredit       ?? selectedSummary?.availableCredit   ?? "0.000";
-  const fineDelivered        = preview?.fineDelivered         ?? q(Number(localFineDelivered) + Number(localCashDueFine));
-  const totalBeforeColl      = preview?.totalBeforeCollection ?? q(Number(currentDue) + Number(fineDelivered));
-  const collectionCredit     = preview?.collectionCredit      ?? "0.000";
-  const attemptedDue         = preview?.attemptedDue          ?? q(Math.max(0, Number(totalBeforeColl) - Number(collectionCredit)));
-  const exceededBy           = preview?.exceededBy            ?? q(Math.max(0, Number(attemptedDue) - Number(creditLimit)));
+  const currentDue           = preview?.currentDue     ?? selectedSummary?.currentRunningDue ?? "0.000";
+  const creditLimit          = preview?.creditLimit    ?? selectedSummary?.creditLimit       ?? "0.000";
+  const availableCredit      = preview?.availableCredit ?? selectedSummary?.availableCredit   ?? "0.000";
+  const fineDelivered        = q(Number(localFineDelivered));
+  const totalBeforeColl      = q(Number(currentDue) + Number(fineDelivered));
+  const collectionCredit     = q(toNumber(form.collection.metalReceived) + Number(localCashFine));
+  const attemptedDue         = q(Math.max(0, Number(totalBeforeColl) - Number(collectionCredit)));
+  const exceededBy           = q(Math.max(0, Number(attemptedDue) - Number(creditLimit)));
   const limitCrossed         = Number(exceededBy) > 0;
   const metalCreditLocal     = q(form.collection.metalReceived);
   const hasMetalCollection   = toNumber(form.collection.metalReceived) > 0;
   const hasCashCollection    = toNumber(form.collection.cashReceived) > 0;
-  const hasCashDue           = toNumber(form.collection.cashDue) > 0;
-  const collectionRateMissing = (hasCashCollection && collectionRate <= 0) || (hasCashDue && cashDueRate <= 0);
+  const hasCashDue           = toNumber(form.cashDueAmount) > 0;
+  const collectionRateMissing = hasCashCollection && collectionRate <= 0;
   const saveDisabled         =
     saving ||
     !form.metalId ||
@@ -381,9 +373,7 @@ export function CreateKhatabookOrder({
     (limitCrossed && !form.overrideCreditLimit);
   const collectionStatusText = hasMetalCollection || hasCashCollection
     ? "Collection will be settled FIFO against outstanding dues."
-    : hasCashDue
-      ? "Cash due is converted to fine grams and added to the running due."
-      : "Leave collection fields empty when nothing is collected at delivery.";
+    : "Leave collection fields empty when nothing is collected at delivery.";
   const orderIdPreview = pulledOrderNumber || "Auto generated";
   const visibleItemRows = items
     .map((item, idx) => ({ item, idx }))
@@ -481,6 +471,20 @@ export function CreateKhatabookOrder({
             value={form.notes}
             onChange={(e) => setField("notes", e.target.value)}
           />
+        </label>
+        <label className="khatabook-create__cash-due-field">
+          <span>Cash Due (optional)</span>
+          <div className="khatabook-create__input-icon khatabook-create__input-icon--left">
+            <IndianRupee size={14} />
+            <input
+              type="number"
+              min="0"
+              placeholder="0"
+              value={form.cashDueAmount}
+              onChange={(e) => setField("cashDueAmount", e.target.value)}
+            />
+          </div>
+          {hasCashDue && <small>{formatMoney(toNumber(form.cashDueAmount))} cash due will be recorded separately.</small>}
         </label>
       </div>
 
@@ -690,36 +694,6 @@ export function CreateKhatabookOrder({
                 <span>Cash</span>
               </div>
               <label>
-                <span>Cash Due</span>
-                <input
-                  type="number" min="0"
-                  placeholder="0"
-                  value={form.collection.cashDue}
-                  onChange={(e) => setCollField("cashDue", e.target.value)}
-                />
-              </label>
-              <label>
-                <span><Coins size={12} /> Due Rate (₹ per 10 gm)</span>
-                <input
-                  type="number" min="0"
-                  placeholder={currentRate ? String(currentRate) : "Enter rate"}
-                  value={form.collection.cashDueRate}
-                  onChange={(e) => setCollField("cashDueRate", e.target.value)}
-                />
-              </label>
-              <div className="khatabook-coll-result khatabook-coll-result--due">
-                <span>
-                  {hasCashDue
-                    ? `${formatMoney(toNumber(form.collection.cashDue))} adds`
-                    : "Cash due"}
-                </span>
-                <strong>
-                  {hasCashDue && !cashDueRate
-                    ? "Rate needed"
-                    : formatQuantity(localCashDueFine)}
-                </strong>
-              </div>
-              <label>
                 <span>Cash Received</span>
                 <input
                   type="number" min="0"
@@ -784,6 +758,12 @@ export function CreateKhatabookOrder({
             <dt>Collection Credit Applied</dt>
             <dd>{formatQuantity(collectionCredit)}</dd>
           </dl>
+          {hasCashDue && (
+            <div className="khatabook-create__cash-due-summary">
+              <span>Cash Due Recorded</span>
+              <strong>{formatMoney(toNumber(form.cashDueAmount))}</strong>
+            </div>
+          )}
           <div className="khatabook-create__running-due">
             <span>New Running Due</span>
             <strong>{formatQuantity(attemptedDue)}</strong>

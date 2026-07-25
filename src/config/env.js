@@ -10,4 +10,5 @@ export const env = Object.freeze({
   appEnvironment: required("VITE_APP_ENV", "development"),
   enableDemoData: String(import.meta.env.VITE_ENABLE_DEMO_DATA ?? "false") === "true",
   storefrontUrl: required("VITE_STOREFRONT_URL", "http://localhost:3000"),
+  googleClientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "",
 });
