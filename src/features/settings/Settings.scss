@@ -28,6 +28,44 @@
   font-size: 11px;
 }
 
+.settings-backup {
+  display: grid;
+  max-width: 560px;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.settings-backup__summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #eadfce;
+  border-radius: 10px;
+  padding: 16px;
+  color: #8a611d;
+  background: linear-gradient(135deg, #fffaf0, #fff);
+}
+
+.settings-backup__summary svg {
+  flex: 0 0 auto;
+}
+
+.settings-backup__summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-backup__summary strong {
+  color: #2f2d27;
+  font-size: 14px;
+}
+
+.settings-backup__summary span {
+  color: #767168;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .settings-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);

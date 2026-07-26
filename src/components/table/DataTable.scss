@@ -6,6 +6,10 @@
   position: relative;
 }
 
+.data-table__mobile-actions {
+  display: none;
+}
+
 .row-action-menu {
   position: absolute;
   z-index: 20;
@@ -162,29 +166,35 @@
 
   .data-table tbody {
     display: block;
+    padding: 6px;
+    background: #fff;
   }
 
   .data-table tbody tr {
     position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 8px;
-    min-height: 62px;
-    margin: 0;
-    padding: 8px 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    grid-auto-flow: row;
+    gap: 6px;
+    min-height: 0;
+    margin: 0 0 8px;
+    padding: 10px;
     border: 1px solid var(--line);
-    border-width: 0 0 1px;
-    border-radius: 0;
-    background: #fff;
-    box-shadow: none;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fff 0%, #fffdf9 100%);
+    box-shadow: 0 6px 14px rgba(44, 35, 23, 0.035);
 
     &:hover {
-      background: #fff;
+      background: linear-gradient(180deg, #fff 0%, #fffdf9 100%);
     }
 
     &.data-table__row--clickable:active {
       background: #fbf8f2;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
     }
   }
 
@@ -202,7 +212,7 @@
   }
 
   // The empty-state cell is a single full-width message, not a label:value
-  // pair — center it and drop the generated label.
+  // pair - center it and drop the generated label.
   .data-table td.data-table__empty {
     display: block;
     height: auto;
@@ -215,15 +225,19 @@
   }
 
   // First column (product / entity / shopkeeper name) leads the card: full
-  // width, left-aligned, no inline label, and reserves the top-right corner
-  // for the checkbox + 3-dot controls positioned there.
+  // width, left-aligned, no inline label, with status pinned on the right.
   .data-table td.data-table__cell--primary {
     display: block;
-    grid-column: 2;
+    grid-column: 1 / -1;
+    grid-row: 1;
     min-width: 0;
     padding: 0;
+    padding-right: 74px;
     margin: 0;
     border-bottom: 0;
+    color: #2e2922;
+    font-size: 14px;
+    font-weight: 750;
     text-align: left;
 
     &::before {
@@ -231,21 +245,55 @@
     }
   }
 
-  .data-table td[data-label="Status"] {
+  .data-table td.data-table__cell--status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
     display: flex;
-    grid-column: 3;
     align-items: center;
     justify-content: flex-end;
-    min-width: 58px;
+    min-width: 0;
   }
 
-  // Checkbox (bulk select) and the 3-dot menu stay in-row rather than forming
-  // their own empty label rows.
+  .data-table td.data-table__cell--mobile-detail {
+    display: grid;
+    grid-column: auto;
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 2px;
+    min-height: 0;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid #f0e8dc;
+    border-radius: 8px;
+    background: #fffaf2;
+    color: #514d46;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.2;
+
+    &::before {
+      display: block;
+      content: attr(data-label);
+      color: #9a958c;
+      overflow: hidden;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.025em;
+      line-height: 1;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+  }
+
+  // Checkbox stays in-row rather than forming its own empty label row.
   .data-table td.data-table__select {
     position: static;
     display: grid;
     place-items: center;
     grid-column: 1;
+    grid-row: 1;
     width: auto;
     padding: 0;
     border-bottom: 0;
@@ -255,18 +303,94 @@
     }
   }
 
+  .data-table tbody tr:has(td.data-table__select) {
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  }
+
+  .data-table tbody tr:has(td.data-table__select) .data-table__cell--primary {
+    grid-column: 2 / -1;
+  }
+
+  .data-table tbody tr:has(td.data-table__select) .data-table__cell--status {
+    right: 10px;
+  }
+
   .data-table td.data-table__actions {
     position: static;
-    display: grid;
-    place-items: center;
-    grid-column: 4;
-    width: auto;
+    display: none;
+    grid-column: 1 / -1;
+    width: 100%;
     padding: 0;
     border-bottom: 0;
+    text-align: left !important;
 
     &::before {
       display: none;
     }
+
+    > .icon-button {
+      display: none;
+    }
+  }
+
+  .data-table td.data-table__actions--available {
+    display: block;
+  }
+
+  .data-table__mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px solid #f0e8dc;
+  }
+
+  .data-table__mobile-actions button {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0 10px;
+    color: #8a611d;
+    border: 1px solid #eadcc7;
+    border-radius: 8px;
+    background: #fff9ef;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    transition:
+      background 140ms ease,
+      border-color 140ms ease,
+      transform 140ms ease;
+
+    &:active {
+      transform: translateY(1px);
+      background: #fff3df;
+      border-color: #dfcba9;
+    }
+  }
+
+  .data-table__mobile-actions button.danger {
+    flex: 0 0 34px;
+    width: 34px;
+    padding: 0;
+    color: #b64035;
+    border-color: #f1c9c4;
+    background: #fff6f4;
+
+    &:active {
+      background: #ffebe8;
+      border-color: #e5aaa2;
+    }
+  }
+
+  .data-table__mobile-actions button.danger .data-table__mobile-action-label {
+    display: none;
   }
 
   .table-pagination {
@@ -281,9 +405,7 @@
   }
 
   .row-action-menu {
-    width: 160px;
-    top: calc(100% - 4px);
-    right: 8px;
+    display: none;
   }
 
   .row-action-menu button {

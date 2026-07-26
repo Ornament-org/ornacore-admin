@@ -32,6 +32,7 @@ export function PreviewListPage({
   onPrimaryAction,
   hidePrimaryAction = false,
   externalError,
+  mobileDetailColumns,
   // Opt-in: pass `ids => Promise<{ data: { deletedIds, skipped } }>` (e.g.
   // productService.bulkRemove) to turn on row-selection checkboxes and a
   // "Delete Selected" bar. Omitted entirely for lists that don't need it.
@@ -290,6 +291,7 @@ export function PreviewListPage({
             onToggleRow={toggleRow}
             rowActions={typeof rowActions === "function" ? rowActions({ refresh }) : rowActions}
             rows={resource.rows}
+            mobileDetailColumns={mobileDetailColumns}
             renderContext={{ refresh }}
             selectable={Boolean(bulkDeleteAction)}
             selectedIds={selectedIds}

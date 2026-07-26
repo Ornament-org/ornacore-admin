@@ -17,10 +17,12 @@ export function DataTable({
   selectedIds,
   onToggleRow,
   onToggleAll,
+  mobileDetailColumns = [],
 }) {
   const [openRow, setOpenRow] = useState(null);
   const menuRef = useRef(null);
   const selectAllRef = useRef(null);
+  const mobileDetailSet = new Set(mobileDetailColumns);
 
   useEffect(() => {
     const close = (event) => {
@@ -81,34 +83,51 @@ export function DataTable({
                     />
                   </td>
                 )}
-                {columns.map((column, columnIndex) => (
-                  <td
-                    key={column.key}
-                    // `data-label`/`--primary` are consumed only by the mobile
-                    // card layout (DataTable.scss) — on desktop the table
-                    // renders exactly as before.
-                    data-label={column.label}
-                    className={columnIndex === 0 ? "data-table__cell--primary" : undefined}
-                  >
-                    {column.render
-                      ? column.render(row[column.key], row, renderContext)
-                      : row[column.key]}
-                  </td>
-                ))}
-                <td className="data-table__actions" onClick={(event) => event.stopPropagation()}>
-                  <button
-                    className="icon-button icon-button--subtle"
-                    aria-label="Open row actions"
-                    onClick={() => setOpenRow((current) => (current === key ? null : key))}
-                  >
-                    <MoreHorizontal size={17} />
-                  </button>
+                {columns.map((column, columnIndex) => {
+                  const className = [
+                    columnIndex === 0 ? "data-table__cell--primary" : "",
+                    column.key === "status" ? "data-table__cell--status" : "",
+                    mobileDetailSet.has(column.key) ? "data-table__cell--mobile-detail" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+
+                  return (
+                    <td
+                      key={column.key}
+                      // `data-label`/mobile classes are consumed only by the
+                      // mobile card layout (DataTable.scss) - desktop keeps the
+                      // same table structure.
+                      data-label={column.label}
+                      className={className || undefined}
+                    >
+                      {column.render
+                        ? column.render(row[column.key], row, renderContext)
+                        : row[column.key]}
+                    </td>
+                  );
+                })}
+                <td
+                  className={`data-table__actions${actions.length ? " data-table__actions--available" : ""}`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {actions.length > 0 && (
+                    <button
+                      className="icon-button icon-button--subtle"
+                      aria-label="Open row actions"
+                      type="button"
+                      onClick={() => setOpenRow((current) => (current === key ? null : key))}
+                    >
+                      <MoreHorizontal size={17} />
+                    </button>
+                  )}
                   {openRow === key && actions.length > 0 && (
                     <div className="row-action-menu" ref={menuRef}>
                       {actions.map((action) => (
                         <button
                           className={action.danger ? "danger" : ""}
                           key={action.label}
+                          type="button"
                           onClick={() => {
                             setOpenRow(null);
                             action.onClick(row);
@@ -116,6 +135,25 @@ export function DataTable({
                         >
                           {action.icon && <action.icon size={14} />}
                           {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {actions.length > 0 && (
+                    <div className="data-table__mobile-actions">
+                      {actions.map((action) => (
+                        <button
+                          aria-label={action.label}
+                          className={action.danger ? "danger" : ""}
+                          key={action.label}
+                          type="button"
+                          onClick={() => {
+                            setOpenRow(null);
+                            action.onClick(row);
+                          }}
+                        >
+                          {action.icon && <action.icon size={14} />}
+                          <span className="data-table__mobile-action-label">{action.label}</span>
                         </button>
                       ))}
                     </div>

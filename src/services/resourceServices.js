@@ -340,6 +340,31 @@ export const storeSettingsService = {
     const { data } = await apiClient.get("/admin/store-settings/branding", { notification: false });
     return data;
   },
+  async getBackupSettings() {
+    const { data } = await apiClient.get("/admin/maintenance/database-backup", { notification: false });
+    return data;
+  },
+  async getBackupJob(jobId) {
+    const { data } = await apiClient.get(`/admin/maintenance/database-backup/jobs/${jobId}`, {
+      notification: false,
+    });
+    return data;
+  },
+  async cancelBackupJobs() {
+    const { data } = await apiClient.post("/admin/maintenance/database-backup/jobs/cancel", null, {
+      notification: { successTitle: "Backup cancelled" },
+    });
+    return data;
+  },
+  async requestBackup(payload) {
+    const { data } = await apiClient.post("/admin/maintenance/database-backup/email", payload, {
+      timeout: 30000,
+      timeoutErrorMessage:
+        "Backup job could not be started in time. Please try again.",
+      notification: { successTitle: "Backup started" },
+    });
+    return data;
+  },
 };
 
 export const featureFlagService = {

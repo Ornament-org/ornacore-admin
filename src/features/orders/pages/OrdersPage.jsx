@@ -108,6 +108,7 @@ export function OrdersPage({ title = "All Orders" }) {
         description="Confirm pricing, assign staff, and control the complete order lifecycle."
         eyebrow="Orders"
         mapRows={mapOrders}
+        mobileDetailColumns={["shopkeeper", "amount", "payment", "staff"]}
         moduleName="Order management"
         primaryAction="Create Order"
         query={query}

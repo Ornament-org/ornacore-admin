@@ -1,5 +1,5 @@
-import { Bell, Database, Edit3, KeyRound, Save, ShieldCheck, SlidersHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Bell, Database, Edit3, KeyRound, Save, ShieldCheck, SlidersHorizontal, XCircle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Button } from "../../../components/common/Button.jsx";
 import { Card } from "../../../components/common/Card.jsx";
@@ -15,31 +15,65 @@ import "../Settings.scss";
 
 const sections = [
   {
+    key: "business",
     title: "Business preferences",
     icon: SlidersHorizontal,
     description: "Currency, timezone, and operational defaults.",
   },
   {
+    key: "security",
     title: "Security",
     icon: ShieldCheck,
     description: "Session policy and administrative safeguards.",
   },
   {
+    key: "api",
     title: "API connections",
     icon: Database,
     description: "Backend, Cloudinary, Redis, and mail provider health.",
   },
   {
+    key: "notifications",
     title: "Notifications",
     icon: Bell,
     description: "Email and in-app event delivery preferences.",
   },
   {
+    key: "credentials",
     title: "Credentials",
     icon: KeyRound,
     description: "Password and future multi-factor authentication options.",
   },
 ];
+
+const backupSection = {
+  key: "backups",
+  title: "Database backup",
+  icon: Database,
+  description: "Send a fresh encrypted database export to the Super Admin email.",
+};
+
+const backupJobStorageKey = "ornacore:last-database-backup-job-id";
+const activeBackupStatuses = new Set(["QUEUED", "BACKING_UP", "EMAILING"]);
+const backupPollIntervalMs = 5000;
+const maxBackupPolls = 12;
+
+const backupJobMessage = (job) => {
+  if (!job) return "";
+  if (job.status === "QUEUED") return `Backup job queued for ${job.recipientEmail}.`;
+  if (job.status === "BACKING_UP") return "Creating the database backup file.";
+  if (job.status === "EMAILING") return `Backup file created. Sending email to ${job.recipientEmail}.`;
+  if (job.status === "SENT") return `Backup email sent to ${job.recipientEmail}.`;
+  if (job.status === "FAILED") return job.error?.message || "Backup email failed.";
+  if (job.status === "CANCELLED") return "Backup job cancelled.";
+  return "Backup job status is updating.";
+};
+
+const backupJobTone = (job) => {
+  if (job?.status === "FAILED") return "error";
+  if (job?.status === "SENT") return "success";
+  return "info";
+};
 
 const emptyForm = {
   businessName: "",
@@ -53,17 +87,33 @@ const emptyForm = {
 
 export function SettingsPage() {
   const dispatch = useDispatch();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isSuperAdmin, user } = usePermissions();
   const canManage = hasPermission("settings.manage");
+  const visibleSections = useMemo(
+    () => (isSuperAdmin ? [...sections, backupSection] : sections),
+    [isSuperAdmin],
+  );
 
   const [activeSection, setActiveSection] = useState(0);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [backupEmail, setBackupEmail] = useState("");
+  const [backupEmailConfigured, setBackupEmailConfigured] = useState(false);
+  const [backupSending, setBackupSending] = useState(false);
+  const [backupError, setBackupError] = useState("");
+  const [backupNotice, setBackupNotice] = useState("");
+  const [backupJob, setBackupJob] = useState(null);
+  const [backupPollCount, setBackupPollCount] = useState(0);
+  const [backupCancelling, setBackupCancelling] = useState(false);
+  const [backupRefreshing, setBackupRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const savedRef = useRef(emptyForm);
+  const backupJobId = backupJob?.id;
+  const backupJobStatus = backupJob?.status;
+  const backupJobIsActive = activeBackupStatuses.has(backupJobStatus);
 
   // Display Name auto-copies from Business Name until the admin edits Display Name
   // directly in this session — same convention as the reference toolbox implementation.
@@ -97,6 +147,78 @@ export function SettingsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (activeSection >= visibleSections.length) setActiveSection(0);
+  }, [activeSection, visibleSections.length]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+
+    let cancelled = false;
+    storeSettingsService
+      .getBackupSettings()
+      .then((response) => {
+        if (cancelled) return;
+        const configuredEmail = response.data?.backup?.recipientEmail || "";
+        setBackupEmailConfigured(Boolean(configuredEmail));
+        setBackupEmail((current) => current || configuredEmail || user?.email || "");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBackupEmailConfigured(false);
+        setBackupEmail((current) => current || user?.email || "");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin, user?.email]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+
+    const jobId = window.localStorage.getItem(backupJobStorageKey);
+    if (!jobId) return undefined;
+
+    let cancelled = false;
+    storeSettingsService
+      .getBackupJob(jobId)
+      .then((response) => {
+        if (!cancelled) {
+          setBackupJob(response.data?.job ?? null);
+          setBackupPollCount(0);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) window.localStorage.removeItem(backupJobStorageKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (!backupJobId || !backupJobIsActive || backupPollCount >= maxBackupPolls) {
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      storeSettingsService
+        .getBackupJob(backupJobId)
+        .then((response) => {
+          setBackupJob(response.data?.job ?? null);
+          setBackupPollCount((count) => count + 1);
+        })
+        .catch((err) => {
+          setBackupError(apiErrorMessage(err));
+          setBackupPollCount(maxBackupPolls);
+        });
+    }, backupPollIntervalMs);
+
+    return () => window.clearTimeout(timer);
+  }, [backupJobId, backupJobIsActive, backupPollCount]);
 
   const updateField = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -144,8 +266,67 @@ export function SettingsPage() {
     }
   };
 
+  const requestBackup = async (event) => {
+    event.preventDefault();
+    setBackupSending(true);
+    setBackupError("");
+    setBackupNotice("");
+    try {
+      const email = backupEmail.trim();
+      const response = await storeSettingsService.requestBackup(email ? { email } : {});
+      const job = response.data?.job;
+      setBackupJob(job ?? null);
+      setBackupPollCount(0);
+      if (job?.id) window.localStorage.setItem(backupJobStorageKey, job.id);
+      setBackupNotice(job?.recipientEmail ? `Backup started for ${job.recipientEmail}.` : "Backup job started.");
+    } catch (err) {
+      setBackupError(apiErrorMessage(err));
+    } finally {
+      setBackupSending(false);
+    }
+  };
+
+  const refreshBackupStatus = async () => {
+    if (!backupJob?.id) return;
+    setBackupRefreshing(true);
+    setBackupError("");
+    try {
+      const response = await storeSettingsService.getBackupJob(backupJob.id);
+      setBackupJob(response.data?.job ?? null);
+      setBackupPollCount(0);
+    } catch (err) {
+      setBackupError(apiErrorMessage(err));
+    } finally {
+      setBackupRefreshing(false);
+    }
+  };
+
+  const cancelBackup = async () => {
+    setBackupCancelling(true);
+    setBackupError("");
+    try {
+      const response = await storeSettingsService.cancelBackupJobs();
+      const jobs = response.data?.jobs ?? [];
+      const currentJob = jobs.find((job) => job.id === backupJobId) ?? jobs[0] ?? null;
+      if (currentJob) {
+        setBackupJob(currentJob);
+        setBackupNotice("Backup job cancelled.");
+        setBackupPollCount(maxBackupPolls);
+      } else {
+        setBackupNotice("No running backup job found.");
+      }
+    } catch (err) {
+      setBackupError(apiErrorMessage(err));
+    } finally {
+      setBackupCancelling(false);
+    }
+  };
+
   const fieldsDisabled = !isEditing || saving;
-  const activeMeta = sections[activeSection];
+  const activeMeta = visibleSections[activeSection] ?? visibleSections[0];
+  const isBusinessSection = activeMeta.key === "business";
+  const isBackupSection = activeMeta.key === "backups";
+  const backupActive = backupJobIsActive;
 
   return (
     <div className="page-stack">
@@ -154,7 +335,7 @@ export function SettingsPage() {
         title="Settings"
         description="Configure the toolbox experience and review integration health."
         actions={
-          activeSection === 0 ? (
+          isBusinessSection ? (
             !isEditing ? (
               <Button
                 icon={Edit3}
@@ -179,7 +360,7 @@ export function SettingsPage() {
       />
       <div className="settings-layout">
         <Card className="settings-nav">
-          {sections.map((section, index) => (
+          {visibleSections.map((section, index) => (
             <button
               type="button"
               className={index === activeSection ? "active" : ""}
@@ -200,10 +381,61 @@ export function SettingsPage() {
           </div>
 
           {error ? <FormAlert>{error}</FormAlert> : null}
-          {notice ? <FormAlert>{notice}</FormAlert> : null}
+          {notice ? <FormAlert tone="success">{notice}</FormAlert> : null}
           {!canManage ? <FormAlert>You have read-only access to store settings.</FormAlert> : null}
+          {backupError ? <FormAlert>{backupError}</FormAlert> : null}
+          {backupNotice ? <FormAlert tone="success">{backupNotice}</FormAlert> : null}
+          {backupJob ? (
+            <FormAlert role={backupJob.status === "FAILED" ? "alert" : "status"} tone={backupJobTone(backupJob)}>
+              {backupJobMessage(backupJob)}
+            </FormAlert>
+          ) : null}
+          {backupSending ? (
+            <FormAlert role="status" tone="info">
+              Starting the backup job. You can leave this screen once it starts.
+            </FormAlert>
+          ) : null}
+          {backupActive && backupPollCount >= maxBackupPolls ? (
+            <FormAlert role="status" tone="info">
+              Auto refresh paused. Tap Refresh Status or reload this screen to check again.
+            </FormAlert>
+          ) : null}
 
-          {activeSection !== 0 ? (
+          {isBackupSection ? (
+            <form className="settings-backup" onSubmit={requestBackup}>
+              <div className="settings-backup__summary">
+                <Database size={24} />
+                <div>
+                  <strong>Super Admin backup</strong>
+                  <span>Creates a fresh MySQL dump, compresses it, and emails it as an attachment.</span>
+                </div>
+              </div>
+              <FormField
+                label="Backup email"
+                hint={backupEmailConfigured ? "Loaded from SUPER_ADMIN_EMAIL." : "Enter the recipient email address."}
+              >
+                <input
+                  type="email"
+                  value={backupEmail}
+                  placeholder="superadmin@example.com"
+                  onChange={(event) => setBackupEmail(event.target.value)}
+                />
+              </FormField>
+              <Button disabled={backupActive} icon={Database} loading={backupSending} type="submit">
+                {backupActive ? "Backup Running" : "Get Backup"}
+              </Button>
+              {backupJob?.id ? (
+                <Button loading={backupRefreshing} onClick={refreshBackupStatus} variant="secondary">
+                  Refresh Status
+                </Button>
+              ) : null}
+              {backupActive ? (
+                <Button icon={XCircle} loading={backupCancelling} onClick={cancelBackup} variant="danger">
+                  Cancel Backup
+                </Button>
+              ) : null}
+            </form>
+          ) : !isBusinessSection ? (
             <p className="settings-placeholder">This section is coming soon.</p>
           ) : loading ? (
             <p className="settings-placeholder">Loading…</p>
@@ -259,7 +491,7 @@ export function SettingsPage() {
             </form>
           )}
 
-          {activeSection === 0 && !loading && (
+          {isBusinessSection && !loading && (
             <div className="integration-health">
               <h3>Integration health</h3>
               <div>

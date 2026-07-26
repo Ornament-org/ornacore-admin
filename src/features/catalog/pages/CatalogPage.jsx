@@ -664,6 +664,7 @@ export function CatalogPage({ title = "Metals" }) {
           rows={catalogRows}
           service={service}
           mapRows={mapCatalogRows}
+          mobileDetailColumns={title === "Metals" ? ["id", "parent", "order"] : undefined}
           rowActions={editable ? rowActions : []}
           externalError={statusError}
           hidePrimaryAction={!editable}
