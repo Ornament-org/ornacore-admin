@@ -1,4 +1,17 @@
-import { Check, FolderPlus, ImageOff, Loader2, RotateCcw, Search, Trash2, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Folder,
+  FolderPlus,
+  ImageOff,
+  Loader2,
+  MoreVertical,
+  MoveRight,
+  RotateCcw,
+  Search,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "../../common/Modal.jsx";
 import { apiErrorMessage } from "../../../services/apiClient.js";
@@ -31,8 +44,19 @@ export function MediaPicker({ open, onClose, onSelect, multiple = false, folder 
   const [folders, setFolders] = useState([]);
   const [folderId, setFolderId] = useState("");
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [movingId, setMovingId] = useState(null);
 
   const selectedFiles = useMemo(() => files.filter((file) => selectedIds.has(file.id)), [files, selectedIds]);
+  const activeFolder = useMemo(
+    () => folders.find((item) => String(item.id) === String(folderId)) ?? null,
+    [folderId, folders],
+  );
+
+  const loadFolders = async () => {
+    const response = await mediaService.listFolders();
+    setFolders(response.data?.folders || []);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -57,14 +81,11 @@ export function MediaPicker({ open, onClose, onSelect, multiple = false, folder 
 
   useEffect(() => {
     if (!open) return;
-    mediaService
-      .listFolders()
-      .then((response) => setFolders(response.data?.folders || []))
-      .catch(() => {});
+    loadFolders().catch(() => {});
   }, [open]);
 
   useEffect(() => {
-    if (open) load();
+    if (open && tab !== "folders") load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, page, tab, folderId]);
 
@@ -79,12 +100,17 @@ export function MediaPicker({ open, onClose, onSelect, multiple = false, folder 
   }, [search, mimeFilter]);
 
   useEffect(() => {
+    setOpenMenuId(null);
+  }, [tab, folderId, page, search, mimeFilter]);
+
+  useEffect(() => {
     if (!open) {
       setSelectedIds(new Set());
       setTab("library");
       setSearch("");
       setMimeFilter("");
       setFolderId("");
+      setOpenMenuId(null);
       setPage(1);
     }
   }, [open]);
@@ -145,6 +171,7 @@ export function MediaPicker({ open, onClose, onSelect, multiple = false, folder 
 
   const trashFile = async (id) => {
     await mediaService.trash(id);
+    setOpenMenuId(null);
     setSelectedIds((current) => {
       const next = new Set(current);
       next.delete(id);
@@ -158,10 +185,35 @@ export function MediaPicker({ open, onClose, onSelect, multiple = false, folder 
     if (!name?.trim()) return;
     try {
       await mediaService.createFolder({ name: name.trim() });
-      const response = await mediaService.listFolders();
-      setFolders(response.data?.folders || []);
+      await loadFolders();
     } catch (err) {
       setError(apiErrorMessage(err));
+    }
+  };
+
+  const openFolder = (id) => {
+    setFolderId(id ? String(id) : "");
+    setTab("library");
+    setPage(1);
+  };
+
+  const showFolders = () => {
+    setTab("folders");
+    setPage(1);
+  };
+
+  const moveFile = async (file, nextFolderId) => {
+    if (movingId) return;
+    setMovingId(file.id);
+    setError("");
+    try {
+      await mediaService.update(file.id, { folderId: nextFolderId || null });
+      setOpenMenuId(null);
+      await load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setMovingId(null);
     }
   };
 
@@ -172,99 +224,173 @@ export function MediaPicker({ open, onClose, onSelect, multiple = false, folder 
           <button type="button" className={tab === "library" ? "active" : ""} onClick={() => { setTab("library"); setPage(1); }}>
             Library
           </button>
+          <button type="button" className={tab === "folders" ? "active" : ""} onClick={() => { setTab("folders"); setPage(1); }}>
+            Folders
+          </button>
           <button type="button" className={tab === "trash" ? "active" : ""} onClick={() => { setTab("trash"); setPage(1); }}>
             Trash
           </button>
         </div>
 
-        <div className="media-picker__toolbar">
-          <div className="media-picker__search">
-            <Search size={15} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by file name or alt text" />
+        {tab !== "folders" ? (
+          <div className="media-picker__toolbar">
+            <div className="media-picker__search">
+              <Search size={15} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by file name or alt text" />
+            </div>
+            <select value={mimeFilter} onChange={(event) => setMimeFilter(event.target.value)}>
+              <option value="">All types</option>
+              <option value="image/">Images</option>
+            </select>
+            <select value={folderId} onChange={(event) => { setFolderId(event.target.value); setPage(1); }}>
+              <option value="">All folders</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+            {tab === "library" ? (
+              <>
+                <button type="button" className="media-picker__folder-btn" onClick={createFolder}>
+                  <FolderPlus size={15} /> New Folder
+                </button>
+                <button type="button" className="media-picker__upload-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  {uploading ? <Loader2 size={15} className="media-picker__spinner" /> : <Upload size={15} />}
+                  {uploading ? "Uploading…" : "Upload New"}
+                </button>
+              </>
+            ) : null}
+            <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={onUploadChange} />
           </div>
-          <select value={mimeFilter} onChange={(event) => setMimeFilter(event.target.value)}>
-            <option value="">All types</option>
-            <option value="image/">Images</option>
-          </select>
-          <select value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-            <option value="">All folders</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
-            ))}
-          </select>
-          {tab === "library" ? (
-            <>
-              <button type="button" className="media-picker__folder-btn" onClick={createFolder}>
-                <FolderPlus size={15} /> New Folder
-              </button>
-              <button type="button" className="media-picker__upload-btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                {uploading ? <Loader2 size={15} className="media-picker__spinner" /> : <Upload size={15} />}
-                {uploading ? "Uploading…" : "Upload New"}
-              </button>
-            </>
-          ) : null}
-          <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={onUploadChange} />
-        </div>
+        ) : (
+          <div className="media-picker__folder-toolbar">
+            <button type="button" className="media-picker__folder-btn" onClick={createFolder}>
+              <FolderPlus size={15} /> New Folder
+            </button>
+          </div>
+        )}
+
+        {tab === "library" && activeFolder ? (
+          <div className="media-picker__folder-context">
+            <Folder size={15} />
+            <span>{activeFolder.name}</span>
+            <button type="button" onClick={showFolders}>
+              <ArrowLeft size={13} /> Back to folders
+            </button>
+            <button type="button" onClick={() => openFolder("")}>Show all images</button>
+          </div>
+        ) : null}
 
         {error ? <div className="media-picker__error">{error}</div> : null}
 
-        <div className="media-picker__grid">
-          {loading ? (
-            <div className="media-picker__empty">Loading…</div>
-          ) : files.length ? (
-            files.map((file) => (
-              <div key={file.id} className={selectedIds.has(file.id) ? "media-picker__card media-picker__card--selected" : "media-picker__card"}>
-                <button
-                  type="button"
-                  className="media-picker__thumb"
-                  onClick={() => (tab === "library" ? toggleSelect(file) : null)}
-                  disabled={tab === "trash"}
-                >
-                  {file.mimeType?.startsWith("image/") ? (
-                    <img src={file.secureUrl} alt={file.altText || ""} />
-                  ) : (
-                    <ImageOff size={26} />
-                  )}
-                  {tab === "library" ? (
-                    <span className="media-picker__checkbox">{selectedIds.has(file.id) ? <Check size={12} /> : null}</span>
-                  ) : null}
-                </button>
-                <div className="media-picker__meta">
-                  <span className="media-picker__filename" title={file.originalFilename || ""}>{file.originalFilename || "Untitled"}</span>
-                  <span className="media-picker__filesize">{formatBytes(file.sizeBytes)}</span>
-                </div>
-                {tab === "trash" ? (
-                  <div className="media-picker__trash-actions">
-                    <button type="button" onClick={() => restoreFile(file.id)} title="Restore">
-                      <RotateCcw size={13} /> Restore
-                    </button>
-                    <button type="button" className="media-picker__danger" onClick={() => purgeFile(file.id)} title="Delete permanently">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" className="media-picker__card-trash" onClick={() => trashFile(file.id)} title="Move to trash">
-                    <Trash2 size={12} />
-                  </button>
-                )}
+        {tab === "folders" ? (
+          <div className="media-picker__folders">
+            <button type="button" className="media-picker__folder-card" onClick={() => openFolder("")}>
+              <span className="media-picker__folder-icon"><Folder size={30} /></span>
+              <strong>All images</strong>
+            </button>
+            {folders.map((item) => (
+              <button type="button" className="media-picker__folder-card" key={item.id} onClick={() => openFolder(item.id)}>
+                <span className="media-picker__folder-icon"><Folder size={30} /></span>
+                <strong>{item.name}</strong>
+              </button>
+            ))}
+            {!folders.length ? (
+              <div className="media-picker__empty">
+                <Folder size={30} />
+                <strong>No folders yet</strong>
+                <span>Create a folder to organize uploaded images.</span>
               </div>
-            ))
-          ) : (
-            <div className="media-picker__empty">
-              <ImageOff size={30} />
-              <strong>{tab === "trash" ? "Trash is empty" : "No media found"}</strong>
-              <span>{tab === "trash" ? "" : "Upload files or adjust your search."}</span>
-            </div>
-          )}
-        </div>
-
-        {pagination && pagination.totalPages > 1 ? (
-          <div className="media-picker__pagination">
-            <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
-            <span>Page {pagination.page} of {pagination.totalPages}</span>
-            <button type="button" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+            ) : null}
           </div>
-        ) : null}
+        ) : (
+          <>
+            <div className="media-picker__grid">
+              {loading ? (
+                <div className="media-picker__empty">Loading…</div>
+              ) : files.length ? (
+                files.map((file) => (
+                  <div key={file.id} className={selectedIds.has(file.id) ? "media-picker__card media-picker__card--selected" : "media-picker__card"}>
+                    <button
+                      type="button"
+                      className="media-picker__thumb"
+                      onClick={() => (tab === "library" ? toggleSelect(file) : null)}
+                      disabled={tab === "trash"}
+                    >
+                      {file.mimeType?.startsWith("image/") ? (
+                        <img src={file.secureUrl} alt={file.altText || ""} />
+                      ) : (
+                        <ImageOff size={26} />
+                      )}
+                      {tab === "library" ? (
+                        <span className="media-picker__checkbox">{selectedIds.has(file.id) ? <Check size={12} /> : null}</span>
+                      ) : null}
+                    </button>
+                    <div className="media-picker__meta">
+                      <span className="media-picker__filename" title={file.originalFilename || ""}>{file.originalFilename || "Untitled"}</span>
+                      <span className="media-picker__filesize">{formatBytes(file.sizeBytes)}</span>
+                    </div>
+                    {tab === "trash" ? (
+                      <div className="media-picker__trash-actions">
+                        <button type="button" onClick={() => restoreFile(file.id)} title="Restore">
+                          <RotateCcw size={13} /> Restore
+                        </button>
+                        <button type="button" className="media-picker__danger" onClick={() => purgeFile(file.id)} title="Delete permanently">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="media-picker__card-menu-wrap">
+                        <button
+                          type="button"
+                          className="media-picker__card-menu-btn"
+                          aria-label={`Options for ${file.originalFilename || "media"}`}
+                          onClick={() => setOpenMenuId((current) => (current === file.id ? null : file.id))}
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                        {openMenuId === file.id ? (
+                          <div className="media-picker__card-menu">
+                            <span>Move to</span>
+                            <button type="button" disabled={!file.folderId || movingId === file.id} onClick={() => moveFile(file, "")}>
+                              <MoveRight size={13} /> All images
+                            </button>
+                            {folders.map((item) => (
+                              <button
+                                type="button"
+                                disabled={String(file.folderId || "") === String(item.id) || movingId === file.id}
+                                key={item.id}
+                                onClick={() => moveFile(file, item.id)}
+                              >
+                                <Folder size={13} /> {item.name}
+                              </button>
+                            ))}
+                            <button type="button" className="media-picker__danger" onClick={() => trashFile(file.id)}>
+                              <Trash2 size={13} /> Move to trash
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="media-picker__empty">
+                  <ImageOff size={30} />
+                  <strong>{tab === "trash" ? "Trash is empty" : "No media found"}</strong>
+                  <span>{tab === "trash" ? "" : "Upload files or adjust your search."}</span>
+                </div>
+              )}
+            </div>
+
+            {pagination && pagination.totalPages > 1 ? (
+              <div className="media-picker__pagination">
+                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
+                <span>Page {pagination.page} of {pagination.totalPages}</span>
+                <button type="button" disabled={page >= pagination.totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
+              </div>
+            ) : null}
+          </>
+        )}
 
         {tab === "library" ? (
           <footer className="media-picker__footer">

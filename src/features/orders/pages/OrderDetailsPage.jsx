@@ -15,10 +15,12 @@ import "./OrderDetailsPage.scss";
 
 const formatWeight = (grams) => `${Number(grams ?? 0).toFixed(3).replace(/\.?0+$/, "")} g`;
 
-const primaryImage = (product) =>
+const primaryProductImage = (product) =>
   product?.images?.find((image) => image.isPrimary)?.media?.secureUrl
   ?? product?.images?.[0]?.media?.secureUrl
   ?? null;
+
+const itemImage = (item) => item.imageUrlSnapshot ?? primaryProductImage(item.product);
 
 const weightByMetal = (items) => {
   const groups = new Map();
@@ -167,7 +169,7 @@ export function OrderDetailsPage() {
               </thead>
               <tbody>
                 {items.map((item) => {
-                  const imageUrl = primaryImage(item.product);
+                  const imageUrl = itemImage(item);
                   return (
                     <tr key={item.id}>
                       <td className="order-details__image-col" data-label="Image">

@@ -68,7 +68,12 @@ function CollectionsOrderField({ value, allCollections, onChange }) {
       <ul className="hp-collections-field__selected">
         {selected.map((collection, index) => (
           <li key={collection.id}>
-            <span>{collection.name}</span>
+            <span>
+              {collection.name}
+              {collection.status && collection.status !== "ACTIVE" ? (
+                <small>({collection.status.toLowerCase()})</small>
+              ) : null}
+            </span>
             <div className="hp-collections-field__actions">
               <button type="button" title="Move up" onClick={() => move(index, -1)}>
                 <ChevronUp size={13} />
@@ -101,6 +106,9 @@ function CollectionsOrderField({ value, allCollections, onChange }) {
           {available.map((collection) => (
             <option key={collection.id} value={collection.id}>
               {collection.name}
+              {collection.status && collection.status !== "ACTIVE"
+                ? ` (${collection.status.toLowerCase()})`
+                : ""}
             </option>
           ))}
         </select>
@@ -368,7 +376,7 @@ export function HomepageManagementPage() {
       .then((response) => setMetals(response.data?.rows ?? response.data ?? []))
       .catch(() => setMetals([]));
     collectionService
-      .list({ pageSize: 100, status: "ACTIVE" }, silent)
+      .list({ pageSize: 100 }, silent)
       .then((response) => setCollections(response.data ?? []))
       .catch(() => setCollections([]));
     categoryService

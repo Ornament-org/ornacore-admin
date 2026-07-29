@@ -827,9 +827,14 @@ export function CreateProductPage() {
         });
       }
 
-      for (const variant of workingVariants) {
+      for (const [variantIndex, variant] of workingVariants.entries()) {
         if (!variant.newImages.length) continue;
-        const savedVariant = product.variants.find((row) => row.sku === variant.sku);
+        const savedVariant =
+          (variant.id
+            ? product.variants.find((row) => String(row.id) === String(variant.id))
+            : null) ??
+          product.variants.find((row) => row.sku === variant.sku) ??
+          product.variants[variantIndex];
         if (!savedVariant) continue;
         await productService.addImages(product.id, {
           images: variant.newImages.map((entry, index) => ({
