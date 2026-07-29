@@ -482,6 +482,8 @@ export function CatalogPage({ title = "Metals" }) {
           label: "Collection image",
           type: "custom",
           fullWidth: true,
+          nullable: true,
+          serialize: (value) => value || null,
           render: ({ values, setValues }) => (
             <ImageUploadField
               previewUrl={
