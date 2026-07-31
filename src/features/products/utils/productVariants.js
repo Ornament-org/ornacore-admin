@@ -61,7 +61,7 @@ export function blankVariant({ attributes = null, attributeValueIds = [], name =
     publicKarat: "",
     weightGrams: "",
     basePrice: "",
-    openingStock: "0",
+    openingStock: "15",
     reorderLevel: "5",
     newImages: [],
     existingImages: [],

@@ -653,13 +653,14 @@ export function CreateProductPage() {
     setVariants((current) => current.filter((variant) => variant._key !== key));
 
   const addVariantImages = (key, pickedImages) => {
-    const used = usedMediaIds();
-    const fresh = pickedImages.filter((entry) => !used.has(String(entry.mediaId)));
-    if (!fresh.length) return;
     setVariants((current) =>
-      current.map((variant) =>
-        variant._key === key ? { ...variant, newImages: [...variant.newImages, ...fresh] } : variant,
-      ),
+      current.map((variant) => {
+        if (variant._key !== key) return variant;
+        const fresh = uniquePickedImages(pickedImages, variantImageMediaIds(variant));
+        return fresh.length
+          ? { ...variant, newImages: [...variant.newImages, ...fresh] }
+          : variant;
+      }),
     );
   };
 
@@ -686,23 +687,27 @@ export function CreateProductPage() {
     );
   };
 
-  // (product_id, media_id) is unique on the backend regardless of which
-  // variant an image belongs to — the same media can only ever be attached
-  // to a product once. Re-picking an already-attached image from the
-  // library used to reach the server and fail there with a raw DB
-  // constraint error; filtering it out here catches it before that.
-  const usedMediaIds = () => {
-    const ids = new Set(images.map((image) => String(image.mediaId)));
-    for (const variant of variants) {
-      for (const image of variant.existingImages ?? []) ids.add(String(image.mediaId));
-      for (const image of variant.newImages ?? []) ids.add(String(image.mediaId));
-    }
+  const uniquePickedImages = (pickedImages, usedMediaIds) => {
+    const nextUsed = new Set(usedMediaIds);
+    return pickedImages.filter((entry) => {
+      const mediaId = String(entry.mediaId);
+      if (nextUsed.has(mediaId)) return false;
+      nextUsed.add(mediaId);
+      return true;
+    });
+  };
+
+  const productImageMediaIds = () => new Set(images.map((image) => String(image.mediaId)));
+
+  const variantImageMediaIds = (variant) => {
+    const ids = new Set();
+    for (const image of variant.existingImages ?? []) ids.add(String(image.mediaId));
+    for (const image of variant.newImages ?? []) ids.add(String(image.mediaId));
     return ids;
   };
 
   const addProductImages = (pickedImages) => {
-    const used = usedMediaIds();
-    const fresh = pickedImages.filter((entry) => !used.has(String(entry.mediaId)));
+    const fresh = uniquePickedImages(pickedImages, productImageMediaIds());
     if (!fresh.length) return;
     setImages((current) => [
       ...current,
