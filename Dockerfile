@@ -23,11 +23,11 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 
 ARG APP_ENV=prod
-ARG VITE_API_BASE_URL=https://backend.wolfan.jipanditji.com
+ARG VITE_API_BASE_URL=https://backend.orna.vedantaa.in
 ARG VITE_APP_NAME="OrnaCore Admin Toolbox"
 ARG VITE_APP_ENV=production
 ARG VITE_ENABLE_DEMO_DATA=false
-ARG VITE_STOREFRONT_URL=https://wolfan.jipanditji.com
+ARG VITE_STOREFRONT_URL=https://orna.vedantaa.in
 ARG VITE_GOOGLE_CLIENT_ID=
 
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
