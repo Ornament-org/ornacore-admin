@@ -23,7 +23,7 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 
 ARG APP_ENV=prod
-ARG VITE_API_BASE_URL=http://localhost:4500
+ARG VITE_API_BASE_URL=https://backend.wolfan.jipanditji.com
 ARG VITE_APP_NAME="OrnaCore Admin Toolbox"
 ARG VITE_APP_ENV=production
 ARG VITE_ENABLE_DEMO_DATA=false

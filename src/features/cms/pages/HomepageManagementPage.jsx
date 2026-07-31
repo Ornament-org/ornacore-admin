@@ -442,6 +442,7 @@ export function HomepageManagementPage() {
         config.id,
         nextSections.map((section, index) => ({ id: Number(section.id), sortOrder: index })),
       );
+      setPreviewReloadKey((key) => key + 1);
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
     }
@@ -482,6 +483,7 @@ export function HomepageManagementPage() {
         isActive: sectionDraft.isActive,
       });
       await refresh();
+      setPreviewReloadKey((key) => key + 1);
       flashNotice("Section saved.");
     } catch (requestError) {
       setError(
@@ -497,6 +499,7 @@ export function HomepageManagementPage() {
   const toggleSectionActive = async (section, next) => {
     await homepageService.updateSection(config.id, section.id, { isActive: next });
     await refresh();
+    setPreviewReloadKey((key) => key + 1);
   };
 
   const addSection = async (sectionType) => {
@@ -507,6 +510,7 @@ export function HomepageManagementPage() {
       const created = await homepageService.addSection(config.id, { sectionType });
       await refresh();
       setSelectedSectionId(created.data?.id ?? null);
+      setPreviewReloadKey((key) => key + 1);
       flashNotice("Section added.");
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
@@ -520,6 +524,7 @@ export function HomepageManagementPage() {
     try {
       await homepageService.duplicateSection(config.id, section.id);
       await refresh();
+      setPreviewReloadKey((key) => key + 1);
       flashNotice("Section duplicated.");
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
@@ -535,6 +540,7 @@ export function HomepageManagementPage() {
       await homepageService.removeSection(config.id, removeTarget.id);
       setRemoveTarget(null);
       await refresh();
+      setPreviewReloadKey((key) => key + 1);
       flashNotice("Section removed.");
     } catch (requestError) {
       setError(apiErrorMessage(requestError));
@@ -558,6 +564,7 @@ export function HomepageManagementPage() {
     });
 
   const typeMeta = selectedSection ? sectionTypeMeta(selectedSection.sectionType) : null;
+  const previewSrc = `${env.storefrontUrl}${env.storefrontUrl.includes("?") ? "&" : "?"}cmsPreview=${previewReloadKey}`;
 
   return (
     <div className="page-stack homepage-management">
@@ -900,7 +907,7 @@ export function HomepageManagementPage() {
               </button>
             </div>
             <div className={`hp-preview__frame hp-preview__frame--${previewDevice}`}>
-              <iframe key={previewReloadKey} src={env.storefrontUrl} title="ornacore-web live preview" />
+              <iframe key={previewReloadKey} src={previewSrc} title="ornacore-web live preview" />
             </div>
             <p className="hp-preview__hint">
               This is the real ornacore-web homepage, live. Section changes here save immediately —
