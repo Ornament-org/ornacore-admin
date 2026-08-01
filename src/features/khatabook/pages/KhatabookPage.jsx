@@ -10,6 +10,7 @@ import { CreateKhatabookOrder } from "../components/CreateKhatabookOrder.jsx";
 import { KhatabookFilters } from "../components/KhatabookFilters.jsx";
 import { KhatabookOrderList } from "../components/KhatabookOrderList.jsx";
 import { formatDate, formatMoney, formatQuantity, formatTime } from "../components/khatabookFormatters.js";
+import { QuickDueModal } from "../dues/QuickDueModal.jsx";
 import { SkeletonKhatabook } from "../../../components/skeleton/SkeletonKhatabook.jsx";
 import { useKhatabookMetals, useKhatabookOrders, useKhatabookRefresh } from "../hooks/useKhatabookData.js";
 import "./Khatabook.scss";
@@ -37,6 +38,7 @@ export function KhatabookPage({
 
   // Quick collection modal — toolbar-level, shopkeeper pre-locked
   const [quickCollectionOpen, setQuickCollectionOpen] = useState(false);
+  const [quickDueType, setQuickDueType] = useState(null);
 
   // ── Ledger metals filter (fetched independently of khatabook Redux cache) ──
   const [ledgerMetals, setLedgerMetals]         = useState([]);
@@ -287,6 +289,22 @@ export function KhatabookPage({
               <Plus size={17} />
               Add Collection
             </button>
+            <button
+              type="button"
+              className="khatabook-toolbar__due-btn"
+              onClick={() => setQuickDueType("cash")}
+            >
+              <Plus size={17} />
+              Add Due Cash
+            </button>
+            <button
+              type="button"
+              className="khatabook-toolbar__due-btn"
+              onClick={() => setQuickDueType("metal")}
+            >
+              <Plus size={17} />
+              Add Due Metal
+            </button>
           </div>
 
           {creating && (
@@ -355,6 +373,20 @@ export function KhatabookPage({
           onClose={() => setQuickCollectionOpen(false)}
           onSuccess={() => {
             setQuickCollectionOpen(false);
+            refresh();
+            onCollectionAdded?.();
+          }}
+        />
+      )}
+
+      {quickDueType && (
+        <QuickDueModal
+          type={quickDueType}
+          shopkeeperId={shopkeeperId}
+          shopName={shopName}
+          onClose={() => setQuickDueType(null)}
+          onSuccess={() => {
+            setQuickDueType(null);
             refresh();
             onCollectionAdded?.();
           }}

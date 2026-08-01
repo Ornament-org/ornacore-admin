@@ -15,6 +15,10 @@
   scrollbar-color: #e8dfd3 transparent;
 }
 
+.collection-modal--compact {
+  width: min(720px, 94vw);
+}
+
 /* overlay */
 .collection-modal__overlay {
   position: fixed;

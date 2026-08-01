@@ -252,6 +252,10 @@ export const khatabookService = {
     apiClient.post("/admin/khatabook/collections/metal", payload),
   createCashCollection: (payload) =>
     apiClient.post("/admin/khatabook/collections/cash", payload),
+  createMetalDue: (payload) =>
+    apiClient.post("/admin/khatabook/dues/metal", payload),
+  createCashDue: (payload) =>
+    apiClient.post("/admin/khatabook/dues/cash", payload),
 };
 export const analyticsService = {
   shopkeeperOverview: async (shopkeeperId, startDate, endDate) => {

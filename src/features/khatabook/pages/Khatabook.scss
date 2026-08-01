@@ -111,6 +111,18 @@
   }
 }
 
+.khatabook-toolbar__due-btn {
+  background: #fff !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+
+  &:hover {
+    background: rgba(197, 138, 42, 0.06) !important;
+    border-color: var(--gold) !important;
+    color: var(--gold-dark) !important;
+  }
+}
+
 // ─── Filters ──────────────────────────────────────────────────────────────────
 .khatabook-filters {
   display: grid;
