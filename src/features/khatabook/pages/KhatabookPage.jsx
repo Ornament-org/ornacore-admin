@@ -163,9 +163,10 @@ export function KhatabookPage({
     }
 
     if (row.entryType === "ADJUSTMENT") {
+      const isMetalDue = Number(row.debitFine ?? 0) > 0;
       return {
         title: "Due adjustment",
-        detail: row.description ?? "",
+        detail: isMetalDue ? `${formatQuantity(row.debitFine)} due added` : row.description ?? "",
       };
     }
 
@@ -246,6 +247,7 @@ export function KhatabookPage({
         {!isLedgerLoading && displayedLedgerRows.map((row) => {
           const description = describeLedgerRow(row);
           const isCredit = ["CASH_CONVERSION", "METAL_COLLECTION"].includes(row.entryType);
+          const isDue = row.entryType === "ADJUSTMENT" && Number(row.debitFine ?? 0) > 0;
           const typeLabel =
             row.entryType === "DELIVERY"
               ? "Delivery"
@@ -258,7 +260,7 @@ export function KhatabookPage({
             <div className={`khatabook-ledger__row${isCredit ? "" : " khatabook-ledger__row--debit"}`} key={row.id}>
               <span>
                 <strong>{formatDate(row.entryDate)}</strong>
-                <small>{formatTime(row.entryDate)}</small>
+                {row.entryType !== "ADJUSTMENT" && <small>{formatTime(row.entryDate)}</small>}
               </span>
               <span>
                 <strong>{row.metal?.name ?? "—"}</strong>
@@ -270,8 +272,12 @@ export function KhatabookPage({
                   {typeLabel}
                 </em>
               </span>
-              <span className={isCredit ? "khatabook-ledger__credit" : "khatabook-ledger__neutral"}>
-                {isCredit && Number(row.creditFine ?? 0) > 0 ? `+ ${formatQuantity(row.creditFine)}` : "—"}
+              <span className={isCredit ? "khatabook-ledger__credit" : isDue ? "khatabook-ledger__due" : "khatabook-ledger__neutral"}>
+                {isCredit && Number(row.creditFine ?? 0) > 0
+                  ? `+ ${formatQuantity(row.creditFine)}`
+                  : isDue
+                    ? `Due + ${formatQuantity(row.debitFine)}`
+                    : "—"}
               </span>
               <span className="khatabook-ledger__balance">
                 {formatQuantity(row.runningBalance)}
