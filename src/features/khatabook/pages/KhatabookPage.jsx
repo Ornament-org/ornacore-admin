@@ -162,6 +162,13 @@ export function KhatabookPage({
       };
     }
 
+    if (row.entryType === "ADJUSTMENT") {
+      return {
+        title: "Due adjustment",
+        detail: row.description ?? "",
+      };
+    }
+
     return {
       title: row.description ?? row.entryType,
       detail: "",
@@ -238,7 +245,15 @@ export function KhatabookPage({
         )}
         {!isLedgerLoading && displayedLedgerRows.map((row) => {
           const description = describeLedgerRow(row);
-          const isCredit = row.entryType !== "DELIVERY";
+          const isCredit = ["CASH_CONVERSION", "METAL_COLLECTION"].includes(row.entryType);
+          const typeLabel =
+            row.entryType === "DELIVERY"
+              ? "Delivery"
+              : row.entryType === "CASH_CONVERSION"
+                ? "Cash"
+                : row.entryType === "ADJUSTMENT"
+                  ? "Due"
+                  : "Metal";
           return (
             <div className={`khatabook-ledger__row${isCredit ? "" : " khatabook-ledger__row--debit"}`} key={row.id}>
               <span>
@@ -252,7 +267,7 @@ export function KhatabookPage({
               </span>
               <span>
                 <em className={`khatabook-ledger__type khatabook-ledger__type--${String(row.entryType).toLowerCase()}`}>
-                  {row.entryType === "DELIVERY" ? "Delivery" : row.entryType === "CASH_CONVERSION" ? "Cash" : "Metal"}
+                  {typeLabel}
                 </em>
               </span>
               <span className={isCredit ? "khatabook-ledger__credit" : "khatabook-ledger__neutral"}>
